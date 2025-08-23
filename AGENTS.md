@@ -11,6 +11,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - Content extraction sidecar configured via `extractor_url` populates a `documents` table
 - Tantivy-based BM25 index built under `tantivy_index`
 - Chunk index stored under `tantivy_index/chunks`
+- Embeddings stored in SQLite `embeddings` table for semantic search
 
 ## Standards
 - Rust 1.75+

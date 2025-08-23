@@ -12,6 +12,7 @@ use tantivy::{doc, Index};
 
 use crate::config::Config;
 use crate::{chunk, db};
+use rusqlite::params;
 
 /// Fields used in the Tantivy schema.
 #[derive(Clone, Copy)]
@@ -252,5 +253,22 @@ pub fn reindex_all(cfg: &Config) -> Result<()> {
     }
 
     chunk_writer.commit()?;
+
+    // Compute embeddings for chunks if enabled
+    if cfg.embedding.provider != "disabled" {
+        let mut stmt = conn.prepare("SELECT chunk_id, text FROM chunks")?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        for row in rows {
+            let (chunk_id, text) = row?;
+            let emb = crate::embed::embed_text(&text);
+            let vec_bytes: Vec<u8> = emb.iter().flat_map(|f| f.to_le_bytes()).collect();
+            conn.execute(
+                "INSERT OR REPLACE INTO embeddings (chunk_id, model_id, dim, vec) VALUES (?1, ?2, ?3, ?4)",
+                params![chunk_id, "builtin", emb.len() as i64, vec_bytes],
+            )?;
+        }
+    }
     Ok(())
 }

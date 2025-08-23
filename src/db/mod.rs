@@ -55,6 +55,13 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
           text BLOB NOT NULL
         );
         CREATE INDEX IF NOT EXISTS chunks_file ON chunks(file_id);
+        CREATE TABLE IF NOT EXISTS embeddings (
+          chunk_id TEXT NOT NULL,
+          model_id TEXT NOT NULL,
+          dim INTEGER NOT NULL,
+          vec BLOB NOT NULL,
+          PRIMARY KEY(chunk_id, model_id)
+        );
         "#,
     )?;
     Ok(conn)

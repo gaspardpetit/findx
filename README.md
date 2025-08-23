@@ -92,6 +92,26 @@ Example chunk result:
 {"results":[{"path":"/data/a/msa.pdf","score":9.8,"chunk_id":"abcd..","start_byte":182340,"end_byte":183912}]}
 ```
 
+## Embeddings and semantic search
+
+Chunks can be embedded into vectors for multilingual semantic search. When the
+embedding provider is enabled (`embedding.provider = "builtin"`), each chunk is
+encoded and stored in an `embeddings` table.
+
+Semantic search queries the stored vectors directly:
+
+```bash
+localindex query --tantivy-index state/idx --db state/catalog.db \
+  --mode semantic "How long do we store subcontractor data?"
+```
+
+Hybrid search combines BM25 and semantic scores using reciprocal rank fusion:
+
+```bash
+localindex query --tantivy-index state/idx --db state/catalog.db \
+  --mode hybrid "indemnité plafond carve-out"
+```
+
 ## Building
 
 ```bash
