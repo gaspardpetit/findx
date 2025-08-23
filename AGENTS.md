@@ -9,6 +9,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - `tools/` – helper scripts and container files
 - `localindex.toml` – sample configuration
 - Content extraction sidecar configured via `extractor_url` populates a `documents` table
+- Tantivy-based BM25 index built under `tantivy_index`
 
 ## Standards
 - Rust 1.75+

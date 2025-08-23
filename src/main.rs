@@ -64,6 +64,7 @@ async fn main() -> Result<()> {
         Command::Index(_) => {
             tracing::info!(?cfg, "index");
             fs::cold_scan(&cfg)?;
+            index::reindex_all(&cfg)?;
         }
         Command::Watch(w) => {
             tracing::info!(threads = w.threads, ?cfg, "watch");
@@ -71,9 +72,22 @@ async fn main() -> Result<()> {
         }
         Command::Query(q) => {
             tracing::info!(mode = ?q.mode, query = %q.query, top_k = q.top_k, chunks = q.chunks, ?cfg, "query");
+            match q.mode {
+                cli::QueryMode::Keyword => {
+                    let res = search::keyword(&cfg, &q.query, q.top_k)?;
+                    println!("{}", serde_json::to_string(&res)?);
+                }
+                _ => {
+                    anyhow::bail!("query mode not implemented");
+                }
+            }
         }
         Command::Oneshot(o) => {
             tracing::info!(mode = ?o.query.mode, query = %o.query.query, ?cfg, "oneshot");
+            fs::cold_scan(&cfg)?;
+            index::reindex_all(&cfg)?;
+            let res = search::keyword(&cfg, &o.query.query, o.query.top_k)?;
+            println!("{}", serde_json::to_string(&res)?);
         }
         Command::Serve(s) => {
             tracing::info!(bind = %s.bind, "serve");

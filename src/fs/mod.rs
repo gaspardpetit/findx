@@ -124,6 +124,7 @@ pub fn watch(cfg: &Config) -> Result<()> {
 
     let conn = db::open(&cfg.db)?;
     cold_scan(cfg)?;
+    crate::index::reindex_all(cfg)?;
 
     let (tx, rx) = channel();
     let mut watcher: RecommendedWatcher = Watcher::new(tx, notify::Config::default())?;

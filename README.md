@@ -1,7 +1,7 @@
 [![Rust](https://github.com/gaspardpetit/localindex/actions/workflows/rust.yml/badge.svg)](https://github.com/gaspardpetit/localindex/actions/workflows/rust.yml)
 # localindex
 
-`localindex` is a Rust CLI for indexing and searching local documents. This repository currently contains the foundational scaffolding for configuration, logging, locking, and the command-line interface.
+`localindex` is a Rust CLI for indexing and searching local documents. It scans files under configured roots, extracts textual content, and builds a searchable [Tantivy](https://tantivy-search.github.io/) index.
 
 ## Layout
 
@@ -57,6 +57,23 @@ During indexing, `localindex` calls a Python sidecar to extract text and
 Markdown from documents. Results are stored in a `documents` table with
 metadata such as language and page counts. The sidecar endpoint is
 configured via `extractor_url`.
+
+## Keyword search
+
+After a scan completes, `localindex` builds a BM25 index using Tantivy.
+Documents are indexed into language-specific fields (`body_en`, `body_fr`) based on the
+detected language. Keyword queries return the top matches with scores and metadata:
+
+```bash
+localindex query --tantivy-index state/idx --db state/catalog.db \
+  --mode keyword --top-k 20 "indemnity carve-out"
+```
+
+Example JSON output:
+
+```json
+{"results":[{"path":"/data/a/msa.pdf","score":12.3,"file_id":42,"mtime":"2025-07-05T12:43:11Z"}]}
+```
 
 ## Building
 
