@@ -235,7 +235,7 @@ mod tests {
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "en".into(),
-            extractor_url: String::new(),
+            extractor_cmd: String::new(),
             embedding: EmbeddingConfig {
                 provider: "disabled".into(),
             },
@@ -268,7 +268,7 @@ mod tests {
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "en".into(),
-            extractor_url: String::new(),
+            extractor_cmd: String::new(),
             embedding: EmbeddingConfig {
                 provider: "disabled".into(),
             },
@@ -303,7 +303,7 @@ mod tests {
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "en".into(),
-            extractor_url: String::new(),
+            extractor_cmd: String::new(),
             embedding: EmbeddingConfig {
                 provider: "builtin".into(),
             },
@@ -337,7 +337,7 @@ mod tests {
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "en".into(),
-            extractor_url: String::new(),
+            extractor_cmd: String::new(),
             embedding: EmbeddingConfig {
                 provider: "builtin".into(),
             },

@@ -39,6 +39,9 @@ async fn main() -> Result<()> {
             if let Some(idx) = &args.tantivy_index {
                 cfg.tantivy_index = idx.clone();
             }
+            if let Some(cmd) = &args.extractor_cmd {
+                cfg.extractor_cmd = cmd.clone();
+            }
         }
         _ => {}
     }

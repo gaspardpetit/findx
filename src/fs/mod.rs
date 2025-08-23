@@ -213,7 +213,7 @@ mod tests {
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
-            extractor_url: "http://127.0.0.1:8878/extract".into(),
+            extractor_cmd: String::new(),
             embedding: crate::config::EmbeddingConfig {
                 provider: "disabled".into(),
             },

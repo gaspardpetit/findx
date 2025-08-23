@@ -1,71 +1,84 @@
-//! Document content extraction via Python sidecar.
+//! Document content extraction via external command or builtin reader.
 
-use anyhow::Result;
+use std::{fs, process::Command};
+
+use anyhow::{anyhow, bail, Result};
 use camino::Utf8Path;
 use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::config::Config;
 
-#[derive(Serialize)]
-struct ExtractRequest<'a> {
-    path: &'a str,
-    lang_hint: &'a str,
-}
+const PLAINTEXT_EXTS: &[&str] = &["txt", "md", "rs", "toml", "json", "cpp", "c", "h", "hpp"];
 
-#[derive(Deserialize)]
-struct ExtractResponse {
-    ok: bool,
-    extractor: String,
-    version: String,
-    lang: Option<String>,
-    pages: Option<i64>,
-    markdown: Option<String>,
-    text: Option<String>,
-    ocr: Option<bool>,
-}
-
-/// Call the extraction sidecar for `path` and store results in the DB.
+/// Extract text from `path` and store results in the DB.
+///
+/// Plain text files are read directly. Other formats are passed to the
+/// configured extractor command which should write extracted text to stdout.
 pub fn extract_file(conn: &Connection, file_id: i64, path: &Utf8Path, cfg: &Config) -> Result<()> {
-    let req = ExtractRequest {
-        path: path.as_str(),
-        lang_hint: &cfg.default_language,
-    };
-    let client = reqwest::blocking::Client::new();
-    let resp = client.post(&cfg.extractor_url).json(&req).send();
-    let resp = match resp {
-        Ok(r) => r,
-        Err(e) => {
-            warn!(error = %e, "extraction request failed");
-            return Ok(());
+    let text = if is_plaintext(path) {
+        match fs::read_to_string(path) {
+            Ok(s) => Some(s),
+            Err(e) => {
+                warn!(%path, error = %e, "failed to read text file");
+                None
+            }
+        }
+    } else if cfg.extractor_cmd.trim().is_empty() {
+        warn!(%path, "no extractor command configured; skipping");
+        None
+    } else {
+        match run_command(&cfg.extractor_cmd, path) {
+            Ok(t) => Some(t),
+            Err(e) => {
+                warn!(%path, error = %e, "extractor command failed");
+                None
+            }
         }
     };
-    let parsed: ExtractResponse = match resp.json() {
-        Ok(p) => p,
-        Err(e) => {
-            warn!(error = %e, "invalid extraction response");
-            return Ok(());
-        }
-    };
-    if parsed.ok {
+
+    if let Some(text) = text {
         let now_ts = now();
+        let extractor = if is_plaintext(path) {
+            "builtin"
+        } else {
+            cfg.extractor_cmd.split_whitespace().next().unwrap_or("cmd")
+        };
         conn.execute(
             "INSERT OR REPLACE INTO documents (file_id, extractor, extractor_version, lang, page_count, content_md, content_txt, ocr_applied, updated_ts) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
             rusqlite::params![
                 file_id,
-                parsed.extractor,
-                parsed.version,
-                parsed.lang,
-                parsed.pages,
-                parsed.markdown,
-                parsed.text,
-                parsed.ocr.unwrap_or(false) as i32,
+                extractor,
+                "",
+                Option::<String>::None,
+                Option::<i64>::None,
+                Option::<String>::None,
+                text,
+                0,
                 now_ts,
             ],
         )?;
     }
+
     Ok(())
+}
+
+fn is_plaintext(path: &Utf8Path) -> bool {
+    path.extension()
+        .map(|e| PLAINTEXT_EXTS.contains(&e.to_lowercase().as_str()))
+        .unwrap_or(false)
+}
+
+fn run_command(cmd: &str, path: &Utf8Path) -> Result<String> {
+    let mut parts = cmd.split_whitespace();
+    let prog = parts
+        .next()
+        .ok_or_else(|| anyhow!("empty extractor command"))?;
+    let output = Command::new(prog).args(parts).arg(path.as_str()).output()?;
+    if !output.status.success() {
+        bail!("command exited with status {:?}", output.status);
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 fn now() -> i64 {

@@ -38,7 +38,7 @@ follow_symlinks = false
 commit_interval_secs = 45
 guard_interval_secs = 180
 default_language = "auto"
-extractor_url = "http://127.0.0.1:8878/extract"
+extractor_cmd = "docling --to txt"
 
 [embedding]
 provider = "disabled"
@@ -53,10 +53,12 @@ changes, updating the catalog as files are added, modified, or deleted.
 
 ## Content extraction
 
-During indexing, `localindex` calls a Python sidecar to extract text and
-Markdown from documents. Results are stored in a `documents` table with
-metadata such as language and page counts. The sidecar endpoint is
-configured via `extractor_url`.
+During indexing, `localindex` converts documents to plain text using a
+configurable command (`extractor_cmd`). By default it invokes the
+[`docling`](https://github.com/docling) CLI. Basic text formats like
+`.txt` or `.md` are read directly without invoking an external tool.
+Results are stored in a `documents` table with metadata such as language
+and page counts.
 
 ## Keyword search
 

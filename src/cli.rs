@@ -46,6 +46,9 @@ pub struct IndexArgs {
 
     #[arg(long, value_name = "DIR", name = "tantivy-index")]
     pub tantivy_index: Option<Utf8PathBuf>,
+
+    #[arg(long, value_name = "CMD")]
+    pub extractor_cmd: Option<String>,
 }
 
 #[derive(Args, Debug, Default)]
