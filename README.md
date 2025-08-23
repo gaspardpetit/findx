@@ -1,3 +1,4 @@
+[![Rust](https://github.com/gaspardpetit/localindex/actions/workflows/rust.yml/badge.svg)](https://github.com/gaspardpetit/localindex/actions/workflows/rust.yml)
 # localindex
 
 `localindex` is a Rust CLI for indexing and searching local documents. This repository currently contains the foundational scaffolding for configuration, logging, locking, and the command-line interface.
@@ -53,8 +54,3 @@ cargo build
 ```bash
 cargo run -- --help
 ```
-
-## Contributing
-
-See [AGENTS.md](AGENTS.md) for project structure, coding standards, and the build/test checklist. Keep documentation up to date with any code changes.
-
