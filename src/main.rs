@@ -2,6 +2,7 @@ mod chunk;
 mod cli;
 mod config;
 mod db;
+mod embed;
 mod extract;
 mod fs;
 mod index;
@@ -83,8 +84,13 @@ async fn main() -> Result<()> {
                         println!("{}", serde_json::to_string(&res)?);
                     }
                 }
-                _ => {
-                    anyhow::bail!("query mode not implemented");
+                cli::QueryMode::Semantic => {
+                    let res = search::semantic_chunks(&cfg, &q.query, q.top_k)?;
+                    println!("{}", serde_json::to_string(&res)?);
+                }
+                cli::QueryMode::Hybrid => {
+                    let res = search::hybrid_chunks(&cfg, &q.query, q.top_k)?;
+                    println!("{}", serde_json::to_string(&res)?);
                 }
             }
         }
@@ -92,12 +98,24 @@ async fn main() -> Result<()> {
             tracing::info!(mode = ?o.query.mode, query = %o.query.query, ?cfg, "oneshot");
             fs::cold_scan(&cfg)?;
             index::reindex_all(&cfg)?;
-            if o.query.chunks {
-                let res = search::keyword_chunks(&cfg, &o.query.query, o.query.top_k)?;
-                println!("{}", serde_json::to_string(&res)?);
-            } else {
-                let res = search::keyword(&cfg, &o.query.query, o.query.top_k)?;
-                println!("{}", serde_json::to_string(&res)?);
+            match o.query.mode {
+                cli::QueryMode::Keyword => {
+                    if o.query.chunks {
+                        let res = search::keyword_chunks(&cfg, &o.query.query, o.query.top_k)?;
+                        println!("{}", serde_json::to_string(&res)?);
+                    } else {
+                        let res = search::keyword(&cfg, &o.query.query, o.query.top_k)?;
+                        println!("{}", serde_json::to_string(&res)?);
+                    }
+                }
+                cli::QueryMode::Semantic => {
+                    let res = search::semantic_chunks(&cfg, &o.query.query, o.query.top_k)?;
+                    println!("{}", serde_json::to_string(&res)?);
+                }
+                cli::QueryMode::Hybrid => {
+                    let res = search::hybrid_chunks(&cfg, &o.query.query, o.query.top_k)?;
+                    println!("{}", serde_json::to_string(&res)?);
+                }
             }
         }
         Command::Serve(s) => {
