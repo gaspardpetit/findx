@@ -29,9 +29,7 @@ impl Lockfile {
                 writeln!(f, "{}", process::id())?;
                 Ok(Self { path })
             }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                Err(LockError::Exists(path))
-            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Err(LockError::Exists(path)),
             Err(e) => Err(LockError::Io(e)),
         }
     }

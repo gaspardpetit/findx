@@ -8,6 +8,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - `examples/` – example configurations or snippets
 - `tools/` – helper scripts and container files
 - `localindex.toml` – sample configuration
+- Content extraction sidecar configured via `extractor_url` populates a `documents` table
 
 ## Standards
 - Rust 1.75+

@@ -12,6 +12,7 @@ use xxhash_rust::xxh3::Xxh3;
 
 use crate::config::Config;
 use crate::db;
+use crate::extract;
 
 /// Run a cold scan over all roots defined in configuration and update the DB.
 pub fn cold_scan(cfg: &Config) -> Result<()> {
@@ -40,7 +41,7 @@ pub fn cold_scan(cfg: &Config) -> Result<()> {
             if !include.is_match(path.as_std_path()) || exclude.is_match(path.as_std_path()) {
                 continue;
             }
-            process_path(&conn, &path)?;
+            process_path(&conn, &path, cfg)?;
             seen.insert(path);
         }
     }
@@ -65,7 +66,7 @@ pub fn cold_scan(cfg: &Config) -> Result<()> {
     Ok(())
 }
 
-fn process_path(conn: &rusqlite::Connection, path: &Utf8Path) -> Result<()> {
+fn process_path(conn: &rusqlite::Connection, path: &Utf8Path, cfg: &Config) -> Result<()> {
     use rusqlite::params;
     let meta = std::fs::metadata(path)?;
     let size = meta.len() as i64;
@@ -82,6 +83,8 @@ fn process_path(conn: &rusqlite::Connection, path: &Utf8Path) -> Result<()> {
             row.get::<_, String>(3)?,
         ))
     });
+    let mut changed = false;
+    let mut file_id: Option<i64> = None;
     match res {
         Ok((id, sz, mt, h)) => {
             if sz != size || mt != mtime || h != hash {
@@ -90,6 +93,8 @@ fn process_path(conn: &rusqlite::Connection, path: &Utf8Path) -> Result<()> {
                     params![id, size, mtime, hash, now_ts],
                 )?;
                 db::log_op(conn, "mod", Some(path.as_str()), None, Some(id))?;
+                changed = true;
+                file_id = Some(id);
             }
         }
         Err(rusqlite::Error::QueryReturnedNoRows) => {
@@ -99,8 +104,15 @@ fn process_path(conn: &rusqlite::Connection, path: &Utf8Path) -> Result<()> {
             )?;
             let id = conn.last_insert_rowid();
             db::log_op(conn, "add", None, Some(path.as_str()), Some(id))?;
+            changed = true;
+            file_id = Some(id);
         }
         Err(e) => return Err(e.into()),
+    }
+    if changed {
+        if let Some(id) = file_id {
+            let _ = extract::extract_file(conn, id, path, cfg);
+        }
     }
     Ok(())
 }
@@ -142,7 +154,7 @@ pub fn watch(cfg: &Config) -> Result<()> {
             .map(|(p, _)| p.clone())
             .collect();
         for p in to_process {
-            let _ = process_path(&conn, &p);
+            let _ = process_path(&conn, &p, cfg);
             pending.remove(&p);
         }
     }
@@ -200,6 +212,7 @@ mod tests {
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
+            extractor_url: "http://127.0.0.1:8878/extract".into(),
             embedding: crate::config::EmbeddingConfig {
                 provider: "disabled".into(),
             },
