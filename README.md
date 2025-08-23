@@ -111,6 +111,15 @@ model by setting `EMBEDDING_MODEL` to a name from
 or cannot be downloaded, `localindex` returns an error instead of falling back
 to a default embedding model.
 
+Before attempting a network download, `localindex` looks for model files under
+`models/<model_name>/`. Supplying an ONNX model and tokenizer files in this
+directory lets you run entirely offline. For example, to use the small
+`snowflake/snowflake-arctic-embed-xs` model in tests, place its
+`model_uint8.onnx`, `tokenizer.json`, `config.json`, `tokenizer_config.json`,
+and `special_tokens_map.json` under
+`models/snowflake/snowflake-arctic-embed-xs/` and set
+`EMBEDDING_MODEL=snowflake/snowflake-arctic-embed-xs`.
+
 To use an external embedding service instead, set `EMBEDDING_URL` (and
 optionally `EMBEDDING_API_KEY`). Any value in `EMBEDDING_MODEL` will be forwarded
 in the request payload for provider-specific model selection.

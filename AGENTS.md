@@ -19,6 +19,9 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
   (and optional `EMBEDDING_API_KEY`) to delegate to an external provider.
   Setting `EMBEDDING_MODEL` to an unsupported value now causes an error rather
   than falling back to the default model.
+  Embedding initialization checks `models/<model_name>/` for local files before
+  downloading from Hugging Face. Tests use
+  `snowflake/snowflake-arctic-embed-xs` when `EMBEDDING_MODEL` is set.
 - `watch` listens for SIGINT and SIGTERM to exit cleanly.
 
 ## Standards
