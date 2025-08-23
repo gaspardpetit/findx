@@ -9,7 +9,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - `.github/workflows/` – CI and release automation
 - `tools/` – helper scripts and container files
 - `localindex.toml` – sample configuration
-- Content extraction sidecar configured via `extractor_url` populates a `documents` table
+- Content extraction uses a configurable command (`extractor_cmd`, default `docling --to txt`) to populate a `documents` table; plain text files are read directly
 - Tantivy-based BM25 index built under `tantivy_index`
 - Chunk index stored under `tantivy_index/chunks`
 - Embeddings stored in SQLite `embeddings` table for semantic search

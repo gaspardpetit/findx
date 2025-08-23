@@ -21,8 +21,8 @@ pub struct Config {
     pub commit_interval_secs: u64,
     pub guard_interval_secs: u64,
     pub default_language: String,
-    #[serde(default = "default_extractor_url")]
-    pub extractor_url: String,
+    #[serde(default = "default_extractor_cmd")]
+    pub extractor_cmd: String,
     pub embedding: EmbeddingConfig,
 }
 
@@ -44,7 +44,7 @@ impl Default for Config {
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
-            extractor_url: default_extractor_url(),
+            extractor_cmd: default_extractor_cmd(),
             embedding: EmbeddingConfig {
                 provider: "disabled".into(),
             },
@@ -60,6 +60,6 @@ impl Config {
     }
 }
 
-fn default_extractor_url() -> String {
-    "http://127.0.0.1:8878/extract".into()
+fn default_extractor_cmd() -> String {
+    "docling --to txt".into()
 }
