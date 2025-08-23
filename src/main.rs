@@ -1,3 +1,4 @@
+mod chunk;
 mod cli;
 mod config;
 mod db;
@@ -74,8 +75,13 @@ async fn main() -> Result<()> {
             tracing::info!(mode = ?q.mode, query = %q.query, top_k = q.top_k, chunks = q.chunks, ?cfg, "query");
             match q.mode {
                 cli::QueryMode::Keyword => {
-                    let res = search::keyword(&cfg, &q.query, q.top_k)?;
-                    println!("{}", serde_json::to_string(&res)?);
+                    if q.chunks {
+                        let res = search::keyword_chunks(&cfg, &q.query, q.top_k)?;
+                        println!("{}", serde_json::to_string(&res)?);
+                    } else {
+                        let res = search::keyword(&cfg, &q.query, q.top_k)?;
+                        println!("{}", serde_json::to_string(&res)?);
+                    }
                 }
                 _ => {
                     anyhow::bail!("query mode not implemented");
@@ -86,8 +92,13 @@ async fn main() -> Result<()> {
             tracing::info!(mode = ?o.query.mode, query = %o.query.query, ?cfg, "oneshot");
             fs::cold_scan(&cfg)?;
             index::reindex_all(&cfg)?;
-            let res = search::keyword(&cfg, &o.query.query, o.query.top_k)?;
-            println!("{}", serde_json::to_string(&res)?);
+            if o.query.chunks {
+                let res = search::keyword_chunks(&cfg, &o.query.query, o.query.top_k)?;
+                println!("{}", serde_json::to_string(&res)?);
+            } else {
+                let res = search::keyword(&cfg, &o.query.query, o.query.top_k)?;
+                println!("{}", serde_json::to_string(&res)?);
+            }
         }
         Command::Serve(s) => {
             tracing::info!(bind = %s.bind, "serve");

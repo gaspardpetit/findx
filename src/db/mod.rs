@@ -43,6 +43,18 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
           ocr_applied INTEGER NOT NULL DEFAULT 0,
           updated_ts INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS chunks (
+          file_id INTEGER NOT NULL,
+          chunk_id TEXT PRIMARY KEY,
+          start_byte INTEGER NOT NULL,
+          end_byte INTEGER NOT NULL,
+          page_from INTEGER,
+          page_to INTEGER,
+          section_path TEXT,
+          token_count INTEGER,
+          text BLOB NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS chunks_file ON chunks(file_id);
         "#,
     )?;
     Ok(conn)
