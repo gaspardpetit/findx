@@ -6,6 +6,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - `src/` – Rust source code and module scaffolding
 - `docs/` – project documentation
 - `examples/` – example configurations or snippets
+- `.github/workflows/` – CI and release automation
 - `tools/` – helper scripts and container files
 - `localindex.toml` – sample configuration
 - Content extraction sidecar configured via `extractor_url` populates a `documents` table
@@ -26,6 +27,9 @@ cargo fmt --all
 cargo check
 cargo test
 ```
+
+Snapshot artifacts for `main` come from `.github/workflows/snapshot.yml`.
+Releases are published with `.github/workflows/release.yml`, which builds and uploads binaries for Linux, macOS, and Windows when a tag is pushed.
 
 ## Documentation
 Keep documentation current. Update `README.md` and this `AGENTS.md` whenever project behavior or structure changes.

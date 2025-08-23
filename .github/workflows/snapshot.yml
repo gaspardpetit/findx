@@ -1,0 +1,71 @@
+permissions:
+  contents: read
+name: snapshot
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            os_name: linux
+            ext: ""
+          - os: macos-latest
+            os_name: macos
+            ext: ""
+          - os: windows-latest
+            os_name: windows
+            ext: ".exe"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute version metadata
+        id: meta
+        shell: bash
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+            DESCRIBE="${GITHUB_REF_NAME}"
+          else
+            DESCRIBE="$(git describe --tags --always --dirty)"
+            VERSION="${DESCRIBE}"
+          fi
+          echo "version=${VERSION}"   >> $GITHUB_OUTPUT
+          echo "describe=${DESCRIBE}" >> $GITHUB_OUTPUT
+          echo "sha=${SHA}"           >> $GITHUB_OUTPUT
+          echo "date=${DATE}"         >> $GITHUB_OUTPUT
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build
+        env:
+          LOCALINDEX_VERSION: ${{ steps.meta.outputs.version }}
+        run: cargo build --release
+
+      - name: Package
+        id: pkg
+        shell: bash
+        run: |
+          ARCH=x86_64
+          OS=${{ matrix.os_name }}
+          NAME="localindex_${OS}_${ARCH}_${{ steps.meta.outputs.describe }}"
+          mkdir -p "pkg/$NAME"
+          cp LICENSE README.md target/release/localindex${{ matrix.ext }} "pkg/$NAME"/
+          echo "file=pkg/$NAME" >> $GITHUB_OUTPUT
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.file }}
