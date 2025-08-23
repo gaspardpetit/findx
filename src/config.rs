@@ -21,6 +21,8 @@ pub struct Config {
     pub commit_interval_secs: u64,
     pub guard_interval_secs: u64,
     pub default_language: String,
+    #[serde(default = "default_extractor_url")]
+    pub extractor_url: String,
     pub embedding: EmbeddingConfig,
 }
 
@@ -42,7 +44,10 @@ impl Default for Config {
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
-            embedding: EmbeddingConfig { provider: "disabled".into() },
+            extractor_url: default_extractor_url(),
+            embedding: EmbeddingConfig {
+                provider: "disabled".into(),
+            },
         }
     }
 }
@@ -53,4 +58,8 @@ impl Config {
         let cfg: Self = toml::from_str(&content)?;
         Ok(cfg)
     }
+}
+
+fn default_extractor_url() -> String {
+    "http://127.0.0.1:8878/extract".into()
 }

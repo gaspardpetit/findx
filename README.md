@@ -38,6 +38,7 @@ follow_symlinks = false
 commit_interval_secs = 45
 guard_interval_secs = 180
 default_language = "auto"
+extractor_url = "http://127.0.0.1:8878/extract"
 
 [embedding]
 provider = "disabled"
@@ -49,6 +50,13 @@ The `index` command performs a cold scan of the configured roots and
 stores file metadata in a SQLite database (`files` and `ops_log` tables).
 The `watch` command runs the scan and then watches for filesystem
 changes, updating the catalog as files are added, modified, or deleted.
+
+## Content extraction
+
+During indexing, `localindex` calls a Python sidecar to extract text and
+Markdown from documents. Results are stored in a `documents` table with
+metadata such as language and page counts. The sidecar endpoint is
+configured via `extractor_url`.
 
 ## Building
 

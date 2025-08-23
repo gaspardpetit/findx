@@ -8,6 +8,7 @@ follow_symlinks = false
 commit_interval_secs = 45
 guard_interval_secs = 180
 default_language = "auto"
+extractor_url = "http://127.0.0.1:8878/extract"
 
 [embedding]
 provider = "disabled"

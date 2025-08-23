@@ -32,6 +32,17 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
           path_to TEXT,
           file_id INTEGER
         );
+        CREATE TABLE IF NOT EXISTS documents (
+          file_id INTEGER PRIMARY KEY,
+          extractor TEXT NOT NULL,
+          extractor_version TEXT NOT NULL,
+          lang TEXT,
+          page_count INTEGER,
+          content_md BLOB,
+          content_txt BLOB,
+          ocr_applied INTEGER NOT NULL DEFAULT 0,
+          updated_ts INTEGER NOT NULL
+        );
         "#,
     )?;
     Ok(conn)
