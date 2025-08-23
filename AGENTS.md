@@ -9,6 +9,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - `examples/` – example configurations or snippets
 - `.github/workflows/` – CI and release automation
 - `tools/` – helper scripts and container files
+- `Dockerfile` – container image for running the CLI
 - `localindex.toml` – sample configuration
 - Content extraction uses a configurable command (`extractor_cmd`, default `docling --to txt`) to populate a `documents` table; plain text files are read directly
 - Tantivy-based BM25 index built under `tantivy_index`
@@ -18,7 +19,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
   (and optional `EMBEDDING_API_KEY`) to delegate to an external provider.
 
 ## Standards
-- Rust 1.75+
+- Rust 1.88+
 - Format code with `cargo fmt --all`
 - Prefer `Utf8PathBuf` for paths and `tracing` for logs
 

@@ -128,6 +128,8 @@ localindex query --tantivy-index state/idx --db state/catalog.db \
 
 ## Building
 
+Requires Rust 1.88 or newer.
+
 ```bash
 cargo build
 ```
@@ -138,6 +140,25 @@ Prebuilt binaries for Linux, macOS, and Windows are available on the [GitHub Rel
 These binaries embed the release tag; verify with `localindex --version`.
 
 Snapshot artifacts for the `main` branch are published by the `snapshot` workflow.
+
+## Docker
+
+A published container image can run `localindex` against a mounted directory. Bind a host path to `/data` and pass your config.
+
+### Index and query
+
+```bash
+docker run --rm -v "$(pwd)":/data ghcr.io/gaspardpetit/localindex:latest index --config /data/localindex.toml
+docker run --rm -v "$(pwd)":/data ghcr.io/gaspardpetit/localindex:latest query --config /data/localindex.toml --mode keyword "project timeline"
+```
+
+### Watch and exec
+
+```bash
+docker run -d --name li -v "$(pwd)":/data ghcr.io/gaspardpetit/localindex:latest watch --config /data/localindex.toml
+docker exec li localindex query --config /data/localindex.toml --mode keyword "project timeline"
+```
+
 
 ## Help
 
