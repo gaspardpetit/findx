@@ -68,13 +68,13 @@ detected language. Keyword queries return the top matches with scores and metada
 
 ```bash
 localindex query --tantivy-index state/idx --db state/catalog.db \
-  --mode keyword --top-k 20 "indemnity carve-out"
+  --mode keyword --top-k 20 "project timeline"
 ```
 
 Example JSON output:
 
 ```json
-{"results":[{"path":"/data/a/msa.pdf","score":12.3,"file_id":42,"mtime":"2025-07-05T12:43:11Z"}]}
+{"results":[{"path":"/data/a/design_spec.pdf","score":12.3,"file_id":42,"mtime":"2025-07-05T12:43:11Z"}]}
 ```
 
 ## Chunking and chunk search
@@ -85,13 +85,13 @@ of whole documents by passing `--chunks`:
 
 ```bash
 localindex query --tantivy-index state/idx --db state/catalog.db \
-  --mode keyword --chunks "résiliation pour faute grave"
+  --mode keyword --chunks "project kickoff agenda"
 ```
 
 Example chunk result:
 
 ```json
-{"results":[{"path":"/data/a/msa.pdf","score":9.8,"chunk_id":"abcd..","start_byte":182340,"end_byte":183912}]}
+{"results":[{"path":"/data/a/design_spec.pdf","score":9.8,"chunk_id":"abcd..","start_byte":182340,"end_byte":183912}]}
 ```
 
 ## Embeddings and semantic search
@@ -104,14 +104,14 @@ Semantic search queries the stored vectors directly:
 
 ```bash
 localindex query --tantivy-index state/idx --db state/catalog.db \
-  --mode semantic "How long do we store subcontractor data?"
+  --mode semantic "How do we set up continuous integration?"
 ```
 
 Hybrid search combines BM25 and semantic scores using reciprocal rank fusion:
 
 ```bash
 localindex query --tantivy-index state/idx --db state/catalog.db \
-  --mode hybrid "indemnité plafond carve-out"
+  --mode hybrid "performance optimization techniques"
 ```
 
 ## Building
