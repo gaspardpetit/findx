@@ -75,6 +75,23 @@ Example JSON output:
 {"results":[{"path":"/data/a/msa.pdf","score":12.3,"file_id":42,"mtime":"2025-07-05T12:43:11Z"}]}
 ```
 
+## Chunking and chunk search
+
+During indexing, documents are split into overlapping chunks which are stored in a `chunks`
+table and indexed separately under `tantivy_index/chunks`. Queries can target chunks instead
+of whole documents by passing `--chunks`:
+
+```bash
+localindex query --tantivy-index state/idx --db state/catalog.db \
+  --mode keyword --chunks "résiliation pour faute grave"
+```
+
+Example chunk result:
+
+```json
+{"results":[{"path":"/data/a/msa.pdf","score":9.8,"chunk_id":"abcd..","start_byte":182340,"end_byte":183912}]}
+```
+
 ## Building
 
 ```bash
