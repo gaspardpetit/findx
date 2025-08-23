@@ -3,11 +3,11 @@ use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use once_cell::sync::OnceCell;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::{env, sync::Mutex};
 
 /// Local embedder backed by fastembed.
 pub struct LocalEmbedder {
-    model: TextEmbedding,
+    model: Mutex<TextEmbedding>,
 }
 
 impl LocalEmbedder {
@@ -20,13 +20,15 @@ impl LocalEmbedder {
         let model =
             TextEmbedding::try_new(InitOptions::new(parsed).with_show_download_progress(true))
                 .context("failed to initialize fastembed TextEmbedding")?;
-        Ok(Self { model })
+        Ok(Self {
+            model: Mutex::new(model),
+        })
     }
 
     pub fn embed(&self, texts: &[impl AsRef<str>]) -> Result<Vec<Vec<f32>>> {
         let docs: Vec<String> = texts.iter().map(|t| t.as_ref().to_string()).collect();
-        let embs = self
-            .model
+        let mut model = self.model.lock().unwrap();
+        let embs = model
             .embed(docs, None)
             .context("fastembed inference failed")?;
         Ok(embs)
