@@ -136,7 +136,7 @@ pub fn keyword_chunks(cfg: &Config, query: &str, top_k: usize) -> Result<ChunkSe
 /// Execute a semantic query using embeddings over chunks.
 pub fn semantic_chunks(cfg: &Config, query: &str, top_k: usize) -> Result<ChunkSearchResults> {
     let conn = db::open(&cfg.db)?;
-    let q_vec = embed::embed_text(query);
+    let q_vec = embed::embed_text(query)?;
     let mut stmt = conn.prepare(
         "SELECT e.chunk_id, e.vec, e.dim, f.realpath, c.start_byte, c.end_byte \
          FROM embeddings e JOIN chunks c ON e.chunk_id=c.chunk_id \
