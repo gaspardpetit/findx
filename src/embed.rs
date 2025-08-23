@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use once_cell::sync::OnceCell;
 use reqwest::StatusCode;
@@ -12,14 +12,25 @@ pub struct LocalEmbedder {
 
 impl LocalEmbedder {
     pub fn new() -> Result<Self> {
-        let model_name =
-            env::var("EMBEDDING_MODEL").unwrap_or_else(|_| "MxbaiEmbedLargeV1".to_string());
-        let parsed = model_name
-            .parse::<EmbeddingModel>()
-            .unwrap_or(EmbeddingModel::MxbaiEmbedLargeV1);
-        let model =
-            TextEmbedding::try_new(InitOptions::new(parsed).with_show_download_progress(true))
-                .context("failed to initialize fastembed TextEmbedding")?;
+        let model = match env::var("EMBEDDING_MODEL") {
+            Ok(name) => {
+                let parsed = name
+                    .parse::<EmbeddingModel>()
+                    .map_err(|_| anyhow!("unsupported embedding model '{}'", name))?;
+                TextEmbedding::try_new(InitOptions::new(parsed).with_show_download_progress(true))
+                    .with_context(|| {
+                    format!(
+                        "failed to initialize fastembed TextEmbedding for '{}'",
+                        name
+                    )
+                })?
+            }
+            Err(_) => TextEmbedding::try_new(
+                InitOptions::new(EmbeddingModel::MxbaiEmbedLargeV1)
+                    .with_show_download_progress(true),
+            )
+            .context("failed to initialize fastembed TextEmbedding")?,
+        };
         Ok(Self {
             model: Mutex::new(model),
         })

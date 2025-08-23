@@ -309,6 +309,8 @@ mod tests {
             },
         };
 
+        std::env::set_var("EMBEDDING_MODEL", "snowflake/snowflake-arctic-embed-xs");
+
         let conn = db::open(&db_path)?;
         conn.execute("INSERT INTO files (id, realpath, size, mtime_ns, status, created_ts, updated_ts) VALUES (1,'/tmp/a.txt',1,0,'active',0,0)", [])?;
         let long_text = "hello world".repeat(100);
@@ -342,6 +344,8 @@ mod tests {
                 provider: "builtin".into(),
             },
         };
+
+        std::env::set_var("EMBEDDING_MODEL", "snowflake/snowflake-arctic-embed-xs");
 
         let conn = db::open(&db_path)?;
         conn.execute("INSERT INTO files (id, realpath, size, mtime_ns, status, created_ts, updated_ts) VALUES (1,'/tmp/a.txt',1,0,'active',0,0)", [])?;
