@@ -1,11 +1,12 @@
 # Dependencies
 
-The project aims to work out of the box with minimal external requirements. The following table lists build- and run-time dependencies, whether they are mandatory, and their roles.
+The project aims to work out of the box with minimal external requirements. The tables below list build-time and run-time dependencies, whether they are mandatory, and their roles.
+
+## Build dependencies
 
 | Dependency | Mandatory? | Purpose |
 | --- | --- | --- |
 | Rust 1.75+ | Yes | Required to build and run `localindex` from source |
-| docling CLI | No | Default document extractor for non-text formats; plain text/markdown are handled internally |
 | anyhow | Yes | Simplified error handling |
 | camino (serde1) | Yes | UTF-8 path handling and serialization |
 | clap (derive) | Yes | Command-line argument parsing |
@@ -28,3 +29,14 @@ The project aims to work out of the box with minimal external requirements. The 
 | blake3 | Yes | Cryptographic hashing for file content |
 | serde_json | Yes | JSON serialization |
 | tempfile (dev) | No | Used in tests for temporary files |
+
+## Runtime dependencies
+
+| Dependency | Mandatory? | Purpose |
+| --- | --- | --- |
+| docling CLI | No | Default document extractor for non-text formats; plain text and Markdown are handled internally |
+| Embedding endpoint | No | Remote service for generating vector embeddings when semantic search is enabled |
+| Bundled SQLite (via rusqlite) | Yes | On-disk database for metadata and embeddings; no external DB service required |
+
+The SQLite library is statically linked via the `rusqlite` crate, so the application manages its database files without requiring a separate database server.
+
