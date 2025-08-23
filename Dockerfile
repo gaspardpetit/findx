@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 
 ## Build stage
-FROM rust:1.75 as builder
+FROM rust:1.88 AS builder
 WORKDIR /usr/src/localindex
 COPY . .
-RUN cargo build --release
+RUN cargo build --release --locked
 
 ## Runtime stage
 FROM debian:bookworm-slim

@@ -145,6 +145,8 @@ localindex query --tantivy-index state/idx --db state/catalog.db \
 
 ## Building
 
+Requires Rust 1.88 or newer.
+
 ```bash
 cargo build
 ```

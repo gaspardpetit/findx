@@ -26,7 +26,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - `watch` listens for SIGINT and SIGTERM to exit cleanly.
 
 ## Standards
-- Rust 1.75+
+- Rust 1.88+
 - Format code with `cargo fmt --all`
 - Prefer `Utf8PathBuf` for paths and `tracing` for logs
 - `LOG_LEVEL` environment variable controls log verbosity
