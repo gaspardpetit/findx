@@ -43,6 +43,13 @@ default_language = "auto"
 provider = "disabled"
 ```
 
+## Filesystem cataloging
+
+The `index` command performs a cold scan of the configured roots and
+stores file metadata in a SQLite database (`files` and `ops_log` tables).
+The `watch` command runs the scan and then watches for filesystem
+changes, updating the catalog as files are added, modified, or deleted.
+
 ## Building
 
 ```bash
