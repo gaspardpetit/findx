@@ -11,8 +11,8 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
 use cli::{Cli, Command, OneshotArgs, WatchArgs};
-use util::logging;
 use util::lock::Lockfile;
+use util::logging;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -25,7 +25,9 @@ async fn main() -> Result<()> {
     };
 
     match &cli.command {
-        Command::Index(args) | Command::Watch(WatchArgs { index: args, .. }) | Command::Oneshot(OneshotArgs { index: args, .. }) => {
+        Command::Index(args)
+        | Command::Watch(WatchArgs { index: args, .. })
+        | Command::Oneshot(OneshotArgs { index: args, .. }) => {
             if !args.roots.is_empty() {
                 cfg.roots = args.roots.clone();
             }
@@ -61,9 +63,11 @@ async fn main() -> Result<()> {
     match &cli.command {
         Command::Index(_) => {
             tracing::info!(?cfg, "index");
+            fs::cold_scan(&cfg)?;
         }
         Command::Watch(w) => {
             tracing::info!(threads = w.threads, ?cfg, "watch");
+            fs::watch(&cfg)?;
         }
         Command::Query(q) => {
             tracing::info!(mode = ?q.mode, query = %q.query, top_k = q.top_k, chunks = q.chunks, ?cfg, "query");
