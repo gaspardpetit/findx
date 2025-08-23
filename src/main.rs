@@ -13,8 +13,8 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
 use cli::{Cli, Command, OneshotArgs, WatchArgs};
-use util::lock::Lockfile;
 use util::logging;
+use util::{dashboard, lock::Lockfile};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -69,7 +69,15 @@ async fn main() -> Result<()> {
         Command::Index(_) => {
             tracing::info!(?cfg, "index");
             fs::cold_scan(&cfg)?;
-            index::reindex_all(&cfg)?;
+            let conn = db::open(&cfg.db)?;
+            let total_files: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM files WHERE status='active'",
+                [],
+                |r| r.get(0),
+            )?;
+            dashboard::init(total_files as u64);
+            let dash = dashboard::get();
+            index::reindex_all(&cfg, dash)?;
         }
         Command::Watch(w) => {
             tracing::info!(threads = w.threads, ?cfg, "watch");
@@ -100,7 +108,15 @@ async fn main() -> Result<()> {
         Command::Oneshot(o) => {
             tracing::info!(mode = ?o.query.mode, query = %o.query.query, ?cfg, "oneshot");
             fs::cold_scan(&cfg)?;
-            index::reindex_all(&cfg)?;
+            let conn = db::open(&cfg.db)?;
+            let total_files: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM files WHERE status='active'",
+                [],
+                |r| r.get(0),
+            )?;
+            dashboard::init(total_files as u64);
+            let dash = dashboard::get();
+            index::reindex_all(&cfg, dash)?;
             match o.query.mode {
                 cli::QueryMode::Keyword => {
                     if o.query.chunks {
