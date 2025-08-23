@@ -2,7 +2,7 @@ use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Parser, Debug)]
-#[command(name = "localindex", version, about = "Local document indexer")]
+#[command(name = "localindex", version = env!("LOCALINDEX_VERSION"), about = "Local document indexer")]
 pub struct Cli {
     #[arg(
         long,

@@ -118,6 +118,13 @@ localindex query --tantivy-index state/idx --db state/catalog.db \
 cargo build
 ```
 
+## Releases
+
+Prebuilt binaries for Linux, macOS, and Windows are available on the [GitHub Releases](https://github.com/gaspardpetit/localindex/releases) page.
+These binaries embed the release tag; verify with `localindex --version`.
+
+Snapshot artifacts for the `main` branch are published by the `snapshot` workflow.
+
 ## Help
 
 ```bash
