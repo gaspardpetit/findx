@@ -262,7 +262,7 @@ pub fn reindex_all(cfg: &Config) -> Result<()> {
         })?;
         for row in rows {
             let (chunk_id, text) = row?;
-            let emb = crate::embed::embed_text(&text);
+            let emb = crate::embed::embed_text(&text)?;
             let vec_bytes: Vec<u8> = emb.iter().flat_map(|f| f.to_le_bytes()).collect();
             conn.execute(
                 "INSERT OR REPLACE INTO embeddings (chunk_id, model_id, dim, vec) VALUES (?1, ?2, ?3, ?4)",

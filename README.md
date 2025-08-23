@@ -98,7 +98,15 @@ Example chunk result:
 
 Chunks can be embedded into vectors for multilingual semantic search. When the
 embedding provider is enabled (`embedding.provider = "builtin"`), each chunk is
-encoded and stored in an `embeddings` table.
+encoded and stored in an `embeddings` table. By default `localindex` uses a
+Rust native embedder powered by [fastembed](https://crates.io/crates/fastembed)
+and downloads a supported model the first time it runs. You can hint another
+model by setting `EMBEDDING_MODEL` to a name from
+`TextEmbedding::list_supported_models()`.
+
+To use an external embedding service instead, set `EMBEDDING_URL` (and
+optionally `EMBEDDING_API_KEY`). Any value in `EMBEDDING_MODEL` will be forwarded
+in the request payload for provider-specific model selection.
 
 Semantic search queries the stored vectors directly:
 
