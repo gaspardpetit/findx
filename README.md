@@ -55,6 +55,11 @@ stores file metadata in a SQLite database (`files` and `ops_log` tables).
 The `watch` command runs the scan and then watches for filesystem
 changes, updating the catalog as files are added, modified, or deleted.
 
+During indexing, a textual dashboard shows progress for files and chunks
+when running in a terminal. The dashboard is suppressed in non-console
+contexts. Set `LOG_LEVEL` (e.g. `debug`, `info`) to control log
+verbosity.
+
 ## Content extraction
 
 During indexing, `localindex` converts documents to plain text using a

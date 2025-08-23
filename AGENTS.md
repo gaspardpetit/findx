@@ -10,6 +10,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - `.github/workflows/` – CI and release automation
 - `tools/` – helper scripts and container files
 - `localindex.toml` – sample configuration
+- `src/util/dashboard.rs` – terminal dashboard for indexing progress
 - Content extraction uses a configurable command (`extractor_cmd`, default `docling --to txt`) to populate a `documents` table; plain text files are read directly
 - Tantivy-based BM25 index built under `tantivy_index`
 - Chunk index stored under `tantivy_index/chunks`
@@ -21,6 +22,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - Rust 1.75+
 - Format code with `cargo fmt --all`
 - Prefer `Utf8PathBuf` for paths and `tracing` for logs
+- `LOG_LEVEL` environment variable controls log verbosity
 
 ## Build and Test
 To accept a change, run:
