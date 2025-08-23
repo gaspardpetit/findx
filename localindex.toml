@@ -1,0 +1,14 @@
+db = "state/catalog.db"
+tantivy_index = "state/idx"
+roots = ["/data/a"]
+include = ["**/*.pdf", "**/*.docx", "**/*.md", "**/*.txt"]
+exclude = ["**/.git/**", "**/~$*"]
+max_file_size_mb = 200
+follow_symlinks = false
+commit_interval_secs = 45
+guard_interval_secs = 180
+default_language = "auto"
+
+[embedding]
+provider = "disabled"
+
