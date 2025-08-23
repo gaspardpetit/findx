@@ -5,6 +5,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 ## Project Structure
 - `src/` – Rust source code and module scaffolding
 - `docs/` – project documentation
+- `doc/` – dependency listings
 - `examples/` – example configurations or snippets
 - `.github/workflows/` – CI and release automation
 - `tools/` – helper scripts and container files
