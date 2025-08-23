@@ -3,6 +3,10 @@
 
 `localindex` is a Rust CLI for indexing and searching local documents. It scans files under configured roots, extracts textual content, and builds a searchable [Tantivy](https://tantivy-search.github.io/) index.
 
+## Dependencies
+
+A complete list of build and run-time dependencies is available in [doc/dependencies.md](doc/dependencies.md).
+
 ## Layout
 
 ```
