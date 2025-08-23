@@ -11,7 +11,7 @@ use tantivy::tokenizer::{LowerCaser, RemoveLongFilter, SimpleTokenizer, TextAnal
 use tantivy::{doc, Index};
 
 use crate::config::Config;
-use crate::{chunk, db};
+use crate::{chunk, db, util::dashboard::Dashboard};
 use rusqlite::params;
 
 /// Fields used in the Tantivy schema.
@@ -150,7 +150,7 @@ pub fn register_tokenizers(index: &Index) {
 }
 
 /// Rebuild the entire Tantivy index from the SQLite catalog.
-pub fn reindex_all(cfg: &Config) -> Result<()> {
+pub fn reindex_all(cfg: &Config, dash: Option<&Dashboard>) -> Result<()> {
     let conn = db::open(&cfg.db)?;
     let index_dir: &Utf8Path = &cfg.tantivy_index;
     if index_dir.exists() {
@@ -164,7 +164,7 @@ pub fn reindex_all(cfg: &Config) -> Result<()> {
 
     let mut stmt = conn.prepare(
         "SELECT f.id, f.realpath, f.mtime_ns, f.size, IFNULL(f.mime, ''), \
-                 IFNULL(d.lang, ''), IFNULL(d.content_txt, '') \
+                IFNULL(d.lang, ''), IFNULL(d.content_txt, '') \
          FROM files f JOIN documents d ON f.id=d.file_id \
          WHERE f.status='active'",
     )?;
@@ -198,12 +198,22 @@ pub fn reindex_all(cfg: &Config) -> Result<()> {
             }
         }
         writer.add_document(tdoc)?;
+        if let Some(d) = dash {
+            d.inc_file();
+        }
     }
 
     writer.commit()?;
+    if let Some(d) = dash {
+        d.finish_files();
+    }
 
     // Chunk documents and build chunk index
     chunk::chunk_all(&conn)?;
+    let chunk_count: i64 = conn.query_row("SELECT COUNT(*) FROM chunks", [], |r| r.get(0))?;
+    if let Some(d) = dash {
+        d.set_chunk_len(chunk_count as u64);
+    }
     let chunk_dir = index_dir.join("chunks");
     if chunk_dir.exists() {
         fs::remove_dir_all(&chunk_dir)?;
@@ -250,9 +260,15 @@ pub fn reindex_all(cfg: &Config) -> Result<()> {
             }
         }
         chunk_writer.add_document(tdoc)?;
+        if let Some(d) = dash {
+            d.inc_chunk();
+        }
     }
 
     chunk_writer.commit()?;
+    if let Some(d) = dash {
+        d.finish_chunks();
+    }
 
     // Compute embeddings for chunks if enabled
     if cfg.embedding.provider != "disabled" {

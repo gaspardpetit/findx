@@ -13,6 +13,7 @@ use xxhash_rust::xxh3::Xxh3;
 use crate::config::Config;
 use crate::db;
 use crate::extract;
+use crate::util::dashboard;
 
 /// Run a cold scan over all roots defined in configuration and update the DB.
 pub fn cold_scan(cfg: &Config) -> Result<()> {
@@ -134,7 +135,15 @@ pub fn watch(cfg: &Config) -> Result<()> {
 
     let conn = db::open(&cfg.db)?;
     cold_scan(cfg)?;
-    crate::index::reindex_all(cfg)?;
+    let total_files: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM files WHERE status='active'",
+        [],
+        |r| r.get(0),
+    )?;
+    dashboard::init(total_files as u64);
+    let dash = dashboard::get();
+    crate::index::reindex_all(cfg, dash)?;
+    let _spinner = dash.map(|d| d.watch_spinner());
 
     let (tx, rx) = channel();
     let mut watcher: RecommendedWatcher = Watcher::new(tx, notify::Config::default())?;

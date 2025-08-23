@@ -245,7 +245,7 @@ mod tests {
         conn.execute("INSERT INTO files (id, realpath, size, mtime_ns, status, created_ts, updated_ts) VALUES (1,'/tmp/a.txt',1,0,'active',0,0)", [])?;
         conn.execute("INSERT INTO documents (file_id, extractor, extractor_version, lang, page_count, content_md, content_txt, ocr_applied, updated_ts) VALUES (1,'doc','v','en',1,'','hello world',0,0)", [])?;
 
-        index::reindex_all(&cfg)?;
+        index::reindex_all(&cfg, None)?;
         let res = keyword(&cfg, "hello", 10)?;
         assert_eq!(res.results.len(), 1);
         Ok(())
@@ -280,7 +280,7 @@ mod tests {
         conn.execute("INSERT INTO documents (file_id, extractor, extractor_version, lang, page_count, content_md, content_txt, ocr_applied, updated_ts) VALUES (1,'doc','v','en',1,'',?1,0,0)",
             params![long_text])?;
 
-        index::reindex_all(&cfg)?;
+        index::reindex_all(&cfg, None)?;
         let res = keyword_chunks(&cfg, "hello", 10)?;
         assert!(!res.results.is_empty());
         Ok(())
@@ -314,7 +314,7 @@ mod tests {
         let long_text = "hello world".repeat(100);
         conn.execute("INSERT INTO documents (file_id, extractor, extractor_version, lang, page_count, content_md, content_txt, ocr_applied, updated_ts) VALUES (1,'doc','v','en',1,'',?1,0,0)", params![long_text])?;
 
-        index::reindex_all(&cfg)?;
+        index::reindex_all(&cfg, None)?;
         let res = semantic_chunks(&cfg, "hello", 10)?;
         assert!(!res.results.is_empty());
         Ok(())
@@ -348,7 +348,7 @@ mod tests {
         let long_text = "hello world".repeat(100);
         conn.execute("INSERT INTO documents (file_id, extractor, extractor_version, lang, page_count, content_md, content_txt, ocr_applied, updated_ts) VALUES (1,'doc','v','en',1,'',?1,0,0)", params![long_text])?;
 
-        index::reindex_all(&cfg)?;
+        index::reindex_all(&cfg, None)?;
         let res = hybrid_chunks(&cfg, "hello", 10)?;
         assert!(!res.results.is_empty());
         Ok(())
