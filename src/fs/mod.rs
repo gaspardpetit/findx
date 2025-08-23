@@ -13,6 +13,7 @@ use xxhash_rust::xxh3::Xxh3;
 use crate::config::Config;
 use crate::db;
 use crate::extract;
+use crate::util::dashboard;
 
 /// Run a cold scan over all roots defined in configuration and update the DB.
 pub fn cold_scan(cfg: &Config) -> Result<()> {
@@ -119,12 +120,30 @@ fn process_path(conn: &rusqlite::Connection, path: &Utf8Path, cfg: &Config) -> R
 
 /// Watch for filesystem events and update the catalog.
 pub fn watch(cfg: &Config) -> Result<()> {
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::mpsc::channel;
+    use std::sync::Arc;
     use std::time::Duration;
+
+    let term = Arc::new(AtomicBool::new(false));
+    {
+        let term = term.clone();
+        ctrlc::set_handler(move || {
+            term.store(true, Ordering::SeqCst);
+        })?;
+    }
 
     let conn = db::open(&cfg.db)?;
     cold_scan(cfg)?;
-    crate::index::reindex_all(cfg)?;
+    let total_files: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM files WHERE status='active'",
+        [],
+        |r| r.get(0),
+    )?;
+    dashboard::init(total_files as u64);
+    let dash = dashboard::get();
+    crate::index::reindex_all(cfg, dash)?;
+    let _spinner = dash.map(|d| d.watch_spinner());
 
     let (tx, rx) = channel();
     let mut watcher: RecommendedWatcher = Watcher::new(tx, notify::Config::default())?;
@@ -134,6 +153,9 @@ pub fn watch(cfg: &Config) -> Result<()> {
 
     let mut pending: HashMap<Utf8PathBuf, SystemTime> = HashMap::new();
     loop {
+        if term.load(Ordering::SeqCst) {
+            break;
+        }
         match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(Ok(event)) => {
                 for path in event.paths {

@@ -2,6 +2,11 @@ use crate::cli::LogFormat;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 pub fn init(format: LogFormat) {
+    if std::env::var("RUST_LOG").is_err() {
+        if let Ok(level) = std::env::var("LOG_LEVEL") {
+            std::env::set_var("RUST_LOG", level);
+        }
+    }
     let filter = EnvFilter::from_default_env();
     match format {
         LogFormat::Json => {
