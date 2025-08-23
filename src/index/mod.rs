@@ -1,4 +1,4 @@
-//! Tantivy index builder for `localindex`.
+//! Tantivy index builder for `findx`.
 
 use std::fs;
 

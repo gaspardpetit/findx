@@ -1,6 +1,6 @@
 # AGENTS
 
-This repository contains `localindex`, a Rust CLI for indexing and searching local documents.
+This repository contains `findx`, a Rust CLI for indexing and searching local documents.
 
 ## Project Structure
 - `src/` – Rust source code and module scaffolding
@@ -10,7 +10,7 @@ This repository contains `localindex`, a Rust CLI for indexing and searching loc
 - `.github/workflows/` – CI and release automation
 - `tools/` – helper scripts and container files
 - `Dockerfile` – container image for running the CLI
-- `localindex.toml` – sample configuration
+- `findx.toml` – sample configuration
 - `src/util/dashboard.rs` – terminal dashboard for indexing progress
 - Content extraction uses a configurable command (`extractor_cmd`, default `docling --to txt`) to populate a `documents` table; plain text files are read directly
 - Tantivy-based BM25 index built under `tantivy_index`

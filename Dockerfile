@@ -2,7 +2,7 @@
 
 ## Build stage
 FROM rust:1.88 AS builder
-WORKDIR /usr/src/localindex
+WORKDIR /usr/src/findx
 COPY . .
 RUN cargo build --release --locked
 
@@ -16,7 +16,7 @@ RUN apt-get update \
 WORKDIR /data
 
 # Copy compiled binary
-COPY --from=builder /usr/src/localindex/target/release/localindex /usr/local/bin/localindex
+COPY --from=builder /usr/src/findx/target/release/findx /usr/local/bin/findx
 
-ENTRYPOINT ["localindex"]
+ENTRYPOINT ["findx"]
 CMD ["--help"]

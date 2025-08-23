@@ -49,7 +49,7 @@ jobs:
 
       - name: Build
         env:
-          LOCALINDEX_VERSION: ${{ steps.meta.outputs.version }}
+          FINDX_VERSION: ${{ steps.meta.outputs.version }}
         run: cargo build --release
 
       - name: Package
@@ -58,9 +58,9 @@ jobs:
         run: |
           ARCH=x86_64
           OS=${{ matrix.os_name }}
-          NAME="localindex_${OS}_${ARCH}_${{ steps.meta.outputs.describe }}"
+          NAME="findx_${OS}_${ARCH}_${{ steps.meta.outputs.describe }}"
           mkdir -p "pkg/$NAME"
-          cp LICENSE README.md target/release/localindex${{ matrix.ext }} "pkg/$NAME"/
+          cp LICENSE README.md target/release/findx${{ matrix.ext }} "pkg/$NAME"/
           echo "file=pkg/$NAME" >> $GITHUB_OUTPUT
           echo "name=$NAME" >> $GITHUB_OUTPUT
 
