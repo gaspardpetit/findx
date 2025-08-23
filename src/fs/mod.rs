@@ -119,8 +119,18 @@ fn process_path(conn: &rusqlite::Connection, path: &Utf8Path, cfg: &Config) -> R
 
 /// Watch for filesystem events and update the catalog.
 pub fn watch(cfg: &Config) -> Result<()> {
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::mpsc::channel;
+    use std::sync::Arc;
     use std::time::Duration;
+
+    let term = Arc::new(AtomicBool::new(false));
+    {
+        let term = term.clone();
+        ctrlc::set_handler(move || {
+            term.store(true, Ordering::SeqCst);
+        })?;
+    }
 
     let conn = db::open(&cfg.db)?;
     cold_scan(cfg)?;
@@ -134,6 +144,9 @@ pub fn watch(cfg: &Config) -> Result<()> {
 
     let mut pending: HashMap<Utf8PathBuf, SystemTime> = HashMap::new();
     loop {
+        if term.load(Ordering::SeqCst) {
+            break;
+        }
         match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(Ok(event)) => {
                 for path in event.paths {
