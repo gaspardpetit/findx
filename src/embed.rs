@@ -1,9 +1,13 @@
-use anyhow::{bail, Context, Result};
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use anyhow::{anyhow, bail, Context, Result};
+use camino::Utf8PathBuf;
+use fastembed::{
+    EmbeddingModel, InitOptions, InitOptionsUserDefined, TextEmbedding, TokenizerFiles,
+    UserDefinedEmbeddingModel,
+};
 use once_cell::sync::OnceCell;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::{env, sync::Mutex};
+use std::{env, fs, sync::Mutex};
 
 /// Local embedder backed by fastembed.
 pub struct LocalEmbedder {
@@ -12,14 +16,23 @@ pub struct LocalEmbedder {
 
 impl LocalEmbedder {
     pub fn new() -> Result<Self> {
-        let model_name =
-            env::var("EMBEDDING_MODEL").unwrap_or_else(|_| "MxbaiEmbedLargeV1".to_string());
-        let parsed = model_name
-            .parse::<EmbeddingModel>()
-            .unwrap_or(EmbeddingModel::MxbaiEmbedLargeV1);
-        let model =
+        let model_name = env::var("EMBEDDING_MODEL")
+            .unwrap_or_else(|_| EmbeddingModel::MxbaiEmbedLargeV1.to_string());
+
+        let model = if let Some(m) = load_local_model(&model_name)? {
+            m
+        } else {
+            let parsed = model_name
+                .parse::<EmbeddingModel>()
+                .map_err(|_| anyhow!("unsupported embedding model '{}'", model_name))?;
             TextEmbedding::try_new(InitOptions::new(parsed).with_show_download_progress(true))
-                .context("failed to initialize fastembed TextEmbedding")?;
+                .with_context(|| {
+                    format!(
+                        "failed to initialize fastembed TextEmbedding for '{}'",
+                        model_name
+                    )
+                })?
+        };
         Ok(Self {
             model: Mutex::new(model),
         })
@@ -40,6 +53,45 @@ impl LocalEmbedder {
             TextEmbedding::list_supported_models()
         );
     }
+}
+
+fn load_local_model(name: &str) -> Result<Option<TextEmbedding>> {
+    let base = Utf8PathBuf::from("models").join(name);
+    if !base.exists() {
+        return Ok(None);
+    }
+
+    let onnx = {
+        let standard = base.join("model.onnx");
+        if standard.exists() {
+            standard
+        } else {
+            let quant = base.join("model_uint8.onnx");
+            if quant.exists() {
+                quant
+            } else {
+                return Ok(None);
+            }
+        }
+    };
+
+    let tokenizer = TokenizerFiles {
+        tokenizer_file: fs::read(base.join("tokenizer.json"))
+            .context("failed to read tokenizer.json")?,
+        config_file: fs::read(base.join("config.json")).context("failed to read config.json")?,
+        special_tokens_map_file: fs::read(base.join("special_tokens_map.json"))
+            .context("failed to read special_tokens_map.json")?,
+        tokenizer_config_file: fs::read(base.join("tokenizer_config.json"))
+            .context("failed to read tokenizer_config.json")?,
+    };
+
+    let ud_model = UserDefinedEmbeddingModel::new(
+        fs::read(&onnx).context("failed to read model file")?,
+        tokenizer,
+    );
+    let model = TextEmbedding::try_new_from_user_defined(ud_model, InitOptionsUserDefined::new())
+        .context("failed to initialize local TextEmbedding")?;
+    Ok(Some(model))
 }
 
 #[derive(Serialize)]
