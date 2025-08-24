@@ -90,7 +90,9 @@ and page counts.
 
 After a scan completes, `findx` builds a BM25 index using Tantivy.
 Documents are indexed into language-specific fields (`body_en`, `body_fr`) based on the
-detected language. Keyword queries return the top matches with scores and metadata:
+detected language. Tokenization preserves decimals and dotted acronyms so references like
+`12.4.1` or `C.c.Q.` remain searchable as single terms. Keyword queries return the top
+matches with scores and metadata:
 
 ```bash
 findx query --tantivy-index .findx/idx --db .findx/catalog.db \
