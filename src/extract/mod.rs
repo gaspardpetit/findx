@@ -2,7 +2,7 @@
 
 use std::{fs, process::Command};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Context, Result};
 use camino::Utf8Path;
 use rusqlite::Connection;
 use tracing::warn;
@@ -40,9 +40,12 @@ pub fn extract_file(conn: &Connection, file_id: i64, path: &Utf8Path, cfg: &Conf
     if let Some(text) = text {
         let now_ts = now();
         let extractor = if is_plaintext(path) {
-            "builtin"
+            "builtin".to_string()
         } else {
-            cfg.extractor_cmd.split_whitespace().next().unwrap_or("cmd")
+            shell_words::split(&cfg.extractor_cmd)
+                .ok()
+                .and_then(|parts| parts.into_iter().next())
+                .unwrap_or_else(|| "cmd".to_string())
         };
         conn.execute(
             "INSERT OR REPLACE INTO documents (file_id, extractor, extractor_version, lang, page_count, content_md, content_txt, ocr_applied, updated_ts) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
@@ -70,11 +73,12 @@ fn is_plaintext(path: &Utf8Path) -> bool {
 }
 
 fn run_command(cmd: &str, path: &Utf8Path) -> Result<String> {
-    let mut parts = cmd.split_whitespace();
-    let prog = parts
-        .next()
-        .ok_or_else(|| anyhow!("empty extractor command"))?;
-    let output = Command::new(prog).args(parts).arg(path.as_str()).output()?;
+    let parts = shell_words::split(cmd).context("parse extractor_cmd")?;
+    let prog = parts.first().context("empty extractor_cmd")?;
+    let output = Command::new(prog)
+        .args(&parts[1..])
+        .arg(path.as_str())
+        .output()?;
     if !output.status.success() {
         bail!("command exited with status {:?}", output.status);
     }

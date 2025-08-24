@@ -82,7 +82,8 @@ During indexing, `findx` converts documents to plain text using a
 configurable command (`extractor_cmd`). By default it invokes the
 [`docling`](https://github.com/docling) CLI with `--to text`. Basic text
 formats like `.txt` or `.md` are read directly without invoking an
-external tool.
+external tool. The command line is parsed with shell-style rules, so
+arguments containing spaces may be quoted.
 Results are stored in a `documents` table with metadata such as language
 and page counts.
 
