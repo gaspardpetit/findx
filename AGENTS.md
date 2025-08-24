@@ -33,6 +33,7 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
 - Format code with `cargo fmt --all`
 - Prefer `Utf8PathBuf` for paths and `tracing` for logs
 - `LOG_LEVEL` environment variable controls log verbosity
+- JSON query results are pretty-printed by default; use `--compact-output` or set `COMPACT_OUTPUT=1` for single-line output
 
 ## Build and Test
 To accept a change, run:
