@@ -117,12 +117,13 @@ Example chunk result:
 
 Chunks can be embedded into vectors for multilingual semantic search. When the
 embedding provider is enabled (`embedding.provider = "builtin"`), each chunk is
-encoded and stored in an `embeddings` table. By default `findx` uses a
-Rust native embedder powered by [fastembed](https://crates.io/crates/fastembed)
-and downloads a supported model the first time it runs. You can hint another
-model by setting `EMBEDDING_MODEL` to a name from
-`TextEmbedding::list_supported_models()`. If the requested model is unsupported
-or cannot be downloaded, `findx` returns an error instead of falling back
+  encoded and stored in an `embeddings` table. By default `findx` uses a
+  Rust native embedder powered by [fastembed](https://crates.io/crates/fastembed),
+  caching models under `.findx/fastembed_cache`. It downloads a supported model
+  the first time it runs. You can hint another
+  model by setting `EMBEDDING_MODEL` to a name from
+  `TextEmbedding::list_supported_models()`. If the requested model is unsupported
+  or cannot be downloaded, `findx` returns an error instead of falling back
 to a default embedding model.
 
 Before attempting a network download, `findx` looks for model files under

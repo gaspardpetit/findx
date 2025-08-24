@@ -16,7 +16,8 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
 - Tantivy-based BM25 index built under `tantivy_index`
 - Chunk index stored under `tantivy_index/chunks`
 - Embeddings stored in SQLite `embeddings` table for semantic search.
-  Local embeddings use the `fastembed` crate by default; set `EMBEDDING_URL`
+  Local embeddings use the `fastembed` crate by default and cache models under
+  `.findx/fastembed_cache`; set `EMBEDDING_URL`
   (and optional `EMBEDDING_API_KEY`) to delegate to an external provider.
   Setting `EMBEDDING_MODEL` to an unsupported value now causes an error rather
   than falling back to the default model.
