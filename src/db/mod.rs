@@ -64,6 +64,14 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
           vec BLOB NOT NULL,
           PRIMARY KEY(chunk_id, model_id)
         );
+        CREATE TABLE IF NOT EXISTS events (
+          id INTEGER PRIMARY KEY,
+          ts INTEGER NOT NULL,
+          topic TEXT NOT NULL,
+          type TEXT NOT NULL,
+          idempotency_key TEXT NOT NULL,
+          payload TEXT NOT NULL
+        );
         "#,
     )?;
     Ok(conn)
