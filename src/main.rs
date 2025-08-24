@@ -88,7 +88,7 @@ async fn main() -> Result<()> {
             )?;
             dashboard::init(total_files as u64);
             let dash = dashboard::get();
-            index::reindex_all(&cfg, dash)?;
+            index::reindex_all_with_retry(&cfg, dash, 3)?;
         }
         Command::Watch(w) => {
             tracing::info!(threads = w.threads, ?cfg, "watch");
@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
                 )?;
                 dashboard::init(total_files as u64);
                 let dash = dashboard::get();
-                index::reindex_all(&cfg, dash)?;
+                index::reindex_all_with_retry(&cfg, dash, 3)?;
             }
             tracing::info!(mode = ?q.mode, query = %q.query, top_k = q.top_k, chunks = q.chunks, ?cfg, "query");
             match q.mode {
@@ -140,7 +140,7 @@ async fn main() -> Result<()> {
             )?;
             dashboard::init(total_files as u64);
             let dash = dashboard::get();
-            index::reindex_all(&cfg, dash)?;
+            index::reindex_all_with_retry(&cfg, dash, 3)?;
             match o.query.mode {
                 cli::QueryMode::Keyword => {
                     if o.query.chunks {

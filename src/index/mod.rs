@@ -1,6 +1,6 @@
 //! Tantivy index builder for `findx`.
 
-use std::fs;
+use std::{fs, io, thread, time::Duration};
 
 use anyhow::Result;
 use camino::Utf8Path;
@@ -298,6 +298,41 @@ pub fn reindex_all(cfg: &Config, dash: Option<&Dashboard>) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn is_permission_denied(err: &anyhow::Error) -> bool {
+    err.chain().any(|cause| {
+        cause
+            .downcast_ref::<io::Error>()
+            .map(|io_err| io_err.kind() == io::ErrorKind::PermissionDenied)
+            .unwrap_or(false)
+    })
+}
+
+/// Rebuild the index, retrying on transient `PermissionDenied` errors.
+pub fn reindex_all_with_retry(
+    cfg: &Config,
+    dash: Option<&Dashboard>,
+    retries: usize,
+) -> Result<()> {
+    let mut last_err: Option<anyhow::Error> = None;
+    for attempt in 0..=retries {
+        match reindex_all(cfg, dash) {
+            Ok(()) => return Ok(()),
+            Err(e) if is_permission_denied(&e) && attempt < retries => {
+                let wait = Duration::from_millis(100 * (attempt + 1) as u64);
+                tracing::warn!(
+                    attempt = attempt + 1,
+                    wait_ms = wait.as_millis(),
+                    "permission denied while building index; retrying"
+                );
+                thread::sleep(wait);
+                last_err = Some(e);
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Err(last_err.expect("retry logic should set last_err"))
 }
 
 fn dir_size(path: &Utf8Path) -> Result<u64> {
