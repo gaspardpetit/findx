@@ -3,6 +3,15 @@
 
 `findx` is a Rust CLI for indexing and searching local documents. It scans files under configured roots, extracts textual content, and builds a searchable [Tantivy](https://tantivy-search.github.io/) index.
 
+## Quick start
+
+```bash
+findx index
+findx query rust documentation
+```
+
+The commands above index the current directory and place all data under `.findx/`. Query defaults to a hybrid search mode.
+
 ## Dependencies
 
 A complete list of build and run-time dependencies is available in [doc/dependencies.md](doc/dependencies.md).
@@ -32,9 +41,9 @@ findx/
 The application reads settings from a TOML file. A sample `findx.toml` is provided:
 
 ```toml
-db = "state/catalog.db"
-tantivy_index = "state/idx"
-roots = ["/data/a"]
+db = ".findx/catalog.db"
+tantivy_index = ".findx/idx"
+roots = ["."]
 include = ["**/*.pdf", "**/*.docx", "**/*.md", "**/*.txt"]
 exclude = ["**/.git/**", "**/~$*"]
 max_file_size_mb = 200
@@ -77,14 +86,14 @@ Documents are indexed into language-specific fields (`body_en`, `body_fr`) based
 detected language. Keyword queries return the top matches with scores and metadata:
 
 ```bash
-findx query --tantivy-index state/idx --db state/catalog.db \
+findx query --tantivy-index .findx/idx --db .findx/catalog.db \
   --mode keyword --top-k 20 "project timeline"
 ```
 
 Example JSON output:
 
 ```json
-{"results":[{"path":"/data/a/design_spec.pdf","score":12.3,"file_id":42,"mtime":"2025-07-05T12:43:11Z"}]}
+{"results":[{"path":"./design_spec.pdf","score":12.3,"file_id":42,"mtime":"2025-07-05T12:43:11Z"}]}
 ```
 
 ## Chunking and chunk search
@@ -94,14 +103,14 @@ table and indexed separately under `tantivy_index/chunks`. Queries can target ch
 of whole documents by passing `--chunks`:
 
 ```bash
-findx query --tantivy-index state/idx --db state/catalog.db \
+findx query --tantivy-index .findx/idx --db .findx/catalog.db \
   --mode keyword --chunks "project kickoff agenda"
 ```
 
 Example chunk result:
 
 ```json
-{"results":[{"path":"/data/a/design_spec.pdf","score":9.8,"chunk_id":"abcd..","start_byte":182340,"end_byte":183912}]}
+{"results":[{"path":"./design_spec.pdf","score":9.8,"chunk_id":"abcd..","start_byte":182340,"end_byte":183912}]}
 ```
 
 ## Embeddings and semantic search
@@ -132,14 +141,14 @@ in the request payload for provider-specific model selection.
 Semantic search queries the stored vectors directly:
 
 ```bash
-findx query --tantivy-index state/idx --db state/catalog.db \
+findx query --tantivy-index .findx/idx --db .findx/catalog.db \
   --mode semantic "How do we set up continuous integration?"
 ```
 
 Hybrid search combines BM25 and semantic scores using reciprocal rank fusion:
 
 ```bash
-findx query --tantivy-index state/idx --db state/catalog.db \
+findx query --tantivy-index .findx/idx --db .findx/catalog.db \
   --mode hybrid "performance optimization techniques"
 ```
 

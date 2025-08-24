@@ -29,9 +29,9 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            db: Utf8PathBuf::from("state/catalog.db"),
-            tantivy_index: Utf8PathBuf::from("state/idx"),
-            roots: vec![Utf8PathBuf::from("/data/a")],
+            db: Utf8PathBuf::from(".findx/catalog.db"),
+            tantivy_index: Utf8PathBuf::from(".findx/idx"),
+            roots: vec![Utf8PathBuf::from(".")],
             include: vec![
                 "**/*.pdf".into(),
                 "**/*.docx".into(),

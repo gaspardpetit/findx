@@ -2,7 +2,12 @@ use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Parser, Debug)]
-#[command(name = "findx", version = env!("FINDX_VERSION"), about = "Local document indexer")]
+#[command(
+    name = "findx",
+    version = env!("FINDX_VERSION"),
+    about = "Local document indexer",
+    after_help = "Examples:\n  findx index\n  findx watch\n  findx query rust cli"
+)]
 pub struct Cli {
     #[arg(long, global = true, value_name = "FILE", default_value = "findx.toml")]
     pub config: Utf8PathBuf,
@@ -22,12 +27,27 @@ pub enum LogFormat {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    #[command(
+        about = "Index files",
+        long_about = "Index files. Defaults to the current directory and stores index data under .findx/.\n\nExamples:\n  findx index\n  findx index --roots src,docs"
+    )]
     Index(IndexArgs),
+    #[command(
+        about = "Watch for changes",
+        long_about = "Watch the filesystem for changes and keep the index updated. Uses the same defaults as the index command.\n\nExample:\n  findx watch"
+    )]
     Watch(WatchArgs),
+    #[command(
+        about = "Query the index",
+        long_about = "Search indexed documents. If no index is found, one is created automatically.\n\nExample:\n  findx query rust cli"
+    )]
     Query(QueryArgs),
     Oneshot(OneshotArgs),
+    #[command(about = "Serve HTTP API (not yet implemented)")]
     Serve(ServeArgs),
+    #[command(about = "Apply database migrations (not yet implemented)")]
     Migrate(MigrateArgs),
+    #[command(about = "Show indexing status (not yet implemented)")]
     Status,
 }
 
@@ -63,7 +83,7 @@ pub struct QueryArgs {
     #[arg(long, value_name = "DIR", name = "tantivy-index")]
     pub tantivy_index: Option<Utf8PathBuf>,
 
-    #[arg(long, value_enum, default_value = "keyword")]
+    #[arg(long, value_enum, default_value = "hybrid")]
     pub mode: QueryMode,
 
     #[arg(long, default_value_t = 20)]
@@ -85,7 +105,7 @@ pub enum QueryMode {
 
 impl Default for QueryMode {
     fn default() -> Self {
-        QueryMode::Keyword
+        QueryMode::Hybrid
     }
 }
 

@@ -1,6 +1,6 @@
-db = "state/catalog.db"
-tantivy_index = "state/idx"
-roots = ["/data/a"]
+db = ".findx/catalog.db"
+tantivy_index = ".findx/idx"
+roots = ["."]
 include = ["**/*.pdf", "**/*.docx", "**/*.md", "**/*.txt"]
 exclude = ["**/.git/**", "**/~$*"]
 max_file_size_mb = 200

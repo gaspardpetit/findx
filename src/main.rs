@@ -84,6 +84,19 @@ async fn main() -> Result<()> {
             fs::watch(&cfg)?;
         }
         Command::Query(q) => {
+            if !cfg.db.exists() || !cfg.tantivy_index.exists() {
+                println!("No index found, creating one under {:?}", cfg.tantivy_index);
+                fs::cold_scan(&cfg)?;
+                let conn = db::open(&cfg.db)?;
+                let total_files: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM files WHERE status='active'",
+                    [],
+                    |r| r.get(0),
+                )?;
+                dashboard::init(total_files as u64);
+                let dash = dashboard::get();
+                index::reindex_all(&cfg, dash)?;
+            }
             tracing::info!(mode = ?q.mode, query = %q.query, top_k = q.top_k, chunks = q.chunks, ?cfg, "query");
             match q.mode {
                 cli::QueryMode::Keyword => {
@@ -139,12 +152,15 @@ async fn main() -> Result<()> {
         }
         Command::Serve(s) => {
             tracing::info!(bind = %s.bind, "serve");
+            println!("'serve' command is not implemented yet");
         }
         Command::Migrate(m) => {
             tracing::info!(check = m.check, apply = m.apply, "migrate");
+            println!("'migrate' command is not implemented yet");
         }
         Command::Status => {
             tracing::info!("status");
+            println!("'status' command is not implemented yet");
         }
     }
 
