@@ -25,13 +25,19 @@ impl LocalEmbedder {
             let parsed = model_name
                 .parse::<EmbeddingModel>()
                 .map_err(|_| anyhow!("unsupported embedding model '{}'", model_name))?;
-            TextEmbedding::try_new(InitOptions::new(parsed).with_show_download_progress(true))
-                .with_context(|| {
-                    format!(
-                        "failed to initialize fastembed TextEmbedding for '{}'",
-                        model_name
-                    )
-                })?
+            let cache_dir = Utf8PathBuf::from(".findx/fastembed_cache");
+            fs::create_dir_all(&cache_dir).context("failed to create fastembed cache directory")?;
+            TextEmbedding::try_new(
+                InitOptions::new(parsed)
+                    .with_cache_dir(cache_dir.into())
+                    .with_show_download_progress(true),
+            )
+            .with_context(|| {
+                format!(
+                    "failed to initialize fastembed TextEmbedding for '{}'",
+                    model_name
+                )
+            })?
         };
         Ok(Self {
             model: Mutex::new(model),
