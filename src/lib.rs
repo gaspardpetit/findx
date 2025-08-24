@@ -1,0 +1,10 @@
+pub mod chunk;
+pub mod cli;
+pub mod config;
+pub mod db;
+pub mod embed;
+pub mod extract;
+pub mod fs;
+pub mod index;
+pub mod search;
+pub mod util;
