@@ -21,15 +21,20 @@ impl Dashboard {
             return None;
         }
         let mp = MultiProgress::new();
-        let style = ProgressStyle::with_template("{msg:<12} {wide_bar} {pos}/{len} ({eta})")
-            .unwrap()
-            .progress_chars("##-");
+        let file_style =
+            ProgressStyle::with_template("{prefix:<7} {msg:<40} {wide_bar} {pos}/{len} ({eta})")
+                .unwrap()
+                .progress_chars("##-");
         let files = mp.add(ProgressBar::new(total_files));
-        files.set_style(style.clone());
-        files.set_message("Files");
+        files.set_style(file_style);
+        files.set_prefix("Files");
+        let chunk_style =
+            ProgressStyle::with_template("{prefix:<7} {wide_bar} {pos}/{len} ({eta})")
+                .unwrap()
+                .progress_chars("##-");
         let chunks = mp.add(ProgressBar::new(0));
-        chunks.set_style(style);
-        chunks.set_message("Chunks");
+        chunks.set_style(chunk_style);
+        chunks.set_prefix("Chunks");
         Some(Self {
             mp: Arc::new(mp),
             files,
@@ -40,6 +45,11 @@ impl Dashboard {
     /// Increment the file progress bar.
     pub fn inc_file(&self) {
         self.files.inc(1);
+    }
+
+    /// Update the file progress bar message with the current path.
+    pub fn set_file(&self, path: &str) {
+        self.files.set_message(path.to_string());
     }
 
     /// Mark file progress bar as finished.

@@ -51,7 +51,7 @@ follow_symlinks = false
 commit_interval_secs = 45
 guard_interval_secs = 180
 default_language = "auto"
-extractor_cmd = "docling --to txt"
+extractor_cmd = "docling --to text"
 
 [embedding]
 provider = "disabled"
@@ -66,16 +66,19 @@ changes, updating the catalog as files are added, modified, or deleted.
 It listens for `SIGINT` and `SIGTERM` to shut down cleanly.
 
 During indexing, a textual dashboard shows progress for files and chunks
-when running in a terminal. The dashboard is suppressed in non-console
-contexts. Set `LOG_LEVEL` (e.g. `debug`, `info`) to control log
-verbosity.
+when running in a terminal, including the path of the file currently
+being processed. The dashboard is suppressed in non-console contexts.
+Set `LOG_LEVEL` (e.g. `debug`, `info`) to control log verbosity. Each
+run appends a plain text log to `.findx/index.log` with file statuses,
+chunk counts, and the final Tantivy index size.
 
 ## Content extraction
 
 During indexing, `findx` converts documents to plain text using a
 configurable command (`extractor_cmd`). By default it invokes the
-[`docling`](https://github.com/docling) CLI. Basic text formats like
-`.txt` or `.md` are read directly without invoking an external tool.
+[`docling`](https://github.com/docling) CLI with `--to text`. Basic text
+formats like `.txt` or `.md` are read directly without invoking an
+external tool.
 Results are stored in a `documents` table with metadata such as language
 and page counts.
 

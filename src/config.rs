@@ -61,5 +61,5 @@ impl Config {
 }
 
 fn default_extractor_cmd() -> String {
-    "docling --to txt".into()
+    "docling --to text".into()
 }

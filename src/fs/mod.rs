@@ -13,7 +13,7 @@ use xxhash_rust::xxh3::Xxh3;
 use crate::config::Config;
 use crate::db;
 use crate::extract;
-use crate::util::dashboard;
+use crate::util::{dashboard, log};
 
 /// Run a cold scan over all roots defined in configuration and update the DB.
 pub fn cold_scan(cfg: &Config) -> Result<()> {
@@ -115,8 +115,15 @@ fn process_path(conn: &rusqlite::Connection, path: &Utf8Path, cfg: &Config) -> R
     }
     if changed {
         if let Some(id) = file_id {
-            let _ = extract::extract_file(conn, id, path, cfg);
+            match extract::extract_file(conn, id, path, cfg) {
+                Ok(_) => log::append(cfg, &format!("indexed\t{}", path))?,
+                Err(e) => {
+                    log::append(cfg, &format!("failed\t{}\t{}", path, e))?;
+                }
+            }
         }
+    } else {
+        log::append(cfg, &format!("skipped\t{}", path))?;
     }
     Ok(())
 }
