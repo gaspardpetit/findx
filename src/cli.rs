@@ -15,6 +15,9 @@ pub struct Cli {
     #[arg(long, global = true, value_enum, default_value = "text")]
     pub log_format: LogFormat,
 
+    #[arg(long, global = true, env = "COMPACT_OUTPUT", default_value_t = false)]
+    pub compact_output: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }

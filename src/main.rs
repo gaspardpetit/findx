@@ -13,8 +13,19 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
 use cli::{Cli, Command, OneshotArgs, WatchArgs};
+use serde::Serialize;
 use util::logging;
 use util::{dashboard, lock::Lockfile};
+
+fn print_json<T: Serialize>(res: &T, compact: bool) -> Result<()> {
+    let json = if compact {
+        serde_json::to_string(res)?
+    } else {
+        serde_json::to_string_pretty(res)?
+    };
+    println!("{}", json);
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -102,19 +113,19 @@ async fn main() -> Result<()> {
                 cli::QueryMode::Keyword => {
                     if q.chunks {
                         let res = search::keyword_chunks(&cfg, &q.query, q.top_k)?;
-                        println!("{}", serde_json::to_string(&res)?);
+                        print_json(&res, cli.compact_output)?;
                     } else {
                         let res = search::keyword(&cfg, &q.query, q.top_k)?;
-                        println!("{}", serde_json::to_string(&res)?);
+                        print_json(&res, cli.compact_output)?;
                     }
                 }
                 cli::QueryMode::Semantic => {
                     let res = search::semantic_chunks(&cfg, &q.query, q.top_k)?;
-                    println!("{}", serde_json::to_string(&res)?);
+                    print_json(&res, cli.compact_output)?;
                 }
                 cli::QueryMode::Hybrid => {
                     let res = search::hybrid_chunks(&cfg, &q.query, q.top_k)?;
-                    println!("{}", serde_json::to_string(&res)?);
+                    print_json(&res, cli.compact_output)?;
                 }
             }
         }
@@ -134,19 +145,19 @@ async fn main() -> Result<()> {
                 cli::QueryMode::Keyword => {
                     if o.query.chunks {
                         let res = search::keyword_chunks(&cfg, &o.query.query, o.query.top_k)?;
-                        println!("{}", serde_json::to_string(&res)?);
+                        print_json(&res, cli.compact_output)?;
                     } else {
                         let res = search::keyword(&cfg, &o.query.query, o.query.top_k)?;
-                        println!("{}", serde_json::to_string(&res)?);
+                        print_json(&res, cli.compact_output)?;
                     }
                 }
                 cli::QueryMode::Semantic => {
                     let res = search::semantic_chunks(&cfg, &o.query.query, o.query.top_k)?;
-                    println!("{}", serde_json::to_string(&res)?);
+                    print_json(&res, cli.compact_output)?;
                 }
                 cli::QueryMode::Hybrid => {
                     let res = search::hybrid_chunks(&cfg, &o.query.query, o.query.top_k)?;
-                    println!("{}", serde_json::to_string(&res)?);
+                    print_json(&res, cli.compact_output)?;
                 }
             }
         }

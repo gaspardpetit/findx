@@ -9,6 +9,7 @@
 findx index
 findx query rust documentation
 ```
+By default, query results are printed as human-readable JSON. Pass `--compact-output` or set `COMPACT_OUTPUT=1` for single-line output.
 
 The commands above index the current directory and place all data under `.findx/`, creating the directory if it does not exist. Runtime state such as the lockfile lives under `.findx/state`. Query defaults to a hybrid search mode.
 
@@ -96,7 +97,16 @@ findx query --tantivy-index .findx/idx --db .findx/catalog.db \
 Example JSON output:
 
 ```json
-{"results":[{"path":"./design_spec.pdf","score":12.3,"file_id":42,"mtime":"2025-07-05T12:43:11Z"}]}
+{
+  "results": [
+    {
+      "path": "./design_spec.pdf",
+      "score": 12.3,
+      "file_id": 42,
+      "mtime": "2025-07-05T12:43:11Z"
+    }
+  ]
+}
 ```
 
 ## Chunking and chunk search
@@ -113,7 +123,17 @@ findx query --tantivy-index .findx/idx --db .findx/catalog.db \
 Example chunk result:
 
 ```json
-{"results":[{"path":"./design_spec.pdf","score":9.8,"chunk_id":"abcd..","start_byte":182340,"end_byte":183912}]}
+{
+  "results": [
+    {
+      "path": "./design_spec.pdf",
+      "score": 9.8,
+      "chunk_id": "abcd..",
+      "start_byte": 182340,
+      "end_byte": 183912
+    }
+  ]
+}
 ```
 
 ## Embeddings and semantic search
