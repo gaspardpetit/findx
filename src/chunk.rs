@@ -2,8 +2,11 @@ use anyhow::Result;
 use blake3::Hasher;
 use rusqlite::{params, Connection};
 
+use crate::config::Config;
+use crate::util::log;
+
 /// Chunk all active documents in the database.
-pub fn chunk_all(conn: &Connection) -> Result<()> {
+pub fn chunk_all(conn: &Connection, cfg: &Config) -> Result<()> {
     let mut stmt = conn.prepare(
         "SELECT f.id, f.realpath, IFNULL(d.content_txt,'' ) FROM files f \
          JOIN documents d ON f.id=d.file_id WHERE f.status='active'",
@@ -17,17 +20,19 @@ pub fn chunk_all(conn: &Connection) -> Result<()> {
     })?;
     for row in rows {
         let (file_id, path, content) = row?;
-        chunk_document(conn, file_id, &path, &content)?;
+        let count = chunk_document(conn, file_id, &path, &content)?;
+        log::append(cfg, &format!("chunks\t{}\t{}", path, count))?;
     }
     Ok(())
 }
 
-fn chunk_document(conn: &Connection, file_id: i64, path: &str, content: &str) -> Result<()> {
+fn chunk_document(conn: &Connection, file_id: i64, path: &str, content: &str) -> Result<usize> {
     conn.execute("DELETE FROM chunks WHERE file_id=?1", params![file_id])?;
     let chunk_size = 2000; // bytes
     let overlap = 200; // bytes
     let mut start = 0;
     let len = content.len();
+    let mut count = 0usize;
     while start < len {
         let mut end = std::cmp::min(start + chunk_size, len);
         while end < len && !content.is_char_boundary(end) {
@@ -44,6 +49,7 @@ fn chunk_document(conn: &Connection, file_id: i64, path: &str, content: &str) ->
             "INSERT INTO chunks (file_id, chunk_id, start_byte, end_byte, token_count, text) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![file_id, chunk_id, start as i64, end as i64, token_count, text],
         )?;
+        count += 1;
         if end == len {
             break;
         }
@@ -52,5 +58,5 @@ fn chunk_document(conn: &Connection, file_id: i64, path: &str, content: &str) ->
             start += 1;
         }
     }
-    Ok(())
+    Ok(count)
 }

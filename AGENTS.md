@@ -12,7 +12,7 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
 - `Dockerfile` – container image for running the CLI
 - `findx.toml` – sample configuration
 - `src/util/dashboard.rs` – terminal dashboard for indexing progress
-- Content extraction uses a configurable command (`extractor_cmd`, default `docling --to txt`) to populate a `documents` table; plain text files are read directly
+- Content extraction uses a configurable command (`extractor_cmd`, default `docling --to text`) to populate a `documents` table; plain text files are read directly
 - Tantivy-based BM25 index built under `tantivy_index`
 - Chunk index stored under `tantivy_index/chunks`
 - Embeddings stored in SQLite `embeddings` table for semantic search.
@@ -23,6 +23,7 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
   Embedding initialization checks `models/<model_name>/` for local files before
   downloading from Hugging Face. Tests use
   `snowflake/snowflake-arctic-embed-xs` when `EMBEDDING_MODEL` is set.
+ - Indexing progress displays the current file and appends a log at `.findx/index.log` with file statuses, chunk counts, and index size.
 - `watch` listens for SIGINT and SIGTERM to exit cleanly.
 
 ## Standards

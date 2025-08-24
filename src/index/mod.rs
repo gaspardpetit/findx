@@ -9,9 +9,13 @@ use tantivy::schema::{
 };
 use tantivy::tokenizer::{LowerCaser, RemoveLongFilter, SimpleTokenizer, TextAnalyzer};
 use tantivy::{doc, Index};
+use walkdir::WalkDir;
 
 use crate::config::Config;
-use crate::{chunk, db, util::dashboard::Dashboard};
+use crate::{
+    chunk, db,
+    util::{dashboard::Dashboard, log},
+};
 use rusqlite::params;
 
 /// Fields used in the Tantivy schema.
@@ -182,6 +186,9 @@ pub fn reindex_all(cfg: &Config, dash: Option<&Dashboard>) -> Result<()> {
 
     for row in rows {
         let (id, path, mtime_ns, size, mime, lang, content) = row?;
+        if let Some(d) = dash {
+            d.set_file(&path);
+        }
         let mut tdoc = doc!(
             fields.path => path.clone(),
             fields.mime => mime,
@@ -209,7 +216,7 @@ pub fn reindex_all(cfg: &Config, dash: Option<&Dashboard>) -> Result<()> {
     }
 
     // Chunk documents and build chunk index
-    chunk::chunk_all(&conn)?;
+    chunk::chunk_all(&conn, cfg)?;
     let chunk_count: i64 = conn.query_row("SELECT COUNT(*) FROM chunks", [], |r| r.get(0))?;
     if let Some(d) = dash {
         d.set_chunk_len(chunk_count as u64);
@@ -270,6 +277,10 @@ pub fn reindex_all(cfg: &Config, dash: Option<&Dashboard>) -> Result<()> {
         d.finish_chunks();
     }
 
+    // Record index size in log
+    let size = dir_size(index_dir)?;
+    log::append(cfg, &format!("index_size\t{}", size))?;
+
     // Compute embeddings for chunks if enabled
     if cfg.embedding.provider != "disabled" {
         let mut stmt = conn.prepare("SELECT chunk_id, text FROM chunks")?;
@@ -287,4 +298,15 @@ pub fn reindex_all(cfg: &Config, dash: Option<&Dashboard>) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn dir_size(path: &Utf8Path) -> Result<u64> {
+    let mut size = 0u64;
+    for entry in WalkDir::new(path.as_std_path()) {
+        let entry = entry?;
+        if entry.file_type().is_file() {
+            size += entry.metadata()?.len();
+        }
+    }
+    Ok(size)
 }

@@ -8,7 +8,7 @@ follow_symlinks = false
 commit_interval_secs = 45
 guard_interval_secs = 180
 default_language = "auto"
-extractor_cmd = "docling --to txt"
+extractor_cmd = "docling --to text"
 
 [embedding]
 provider = "disabled"

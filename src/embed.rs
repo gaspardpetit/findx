@@ -5,6 +5,7 @@ use fastembed::{
     UserDefinedEmbeddingModel,
 };
 use once_cell::sync::OnceCell;
+use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::{env, fs, sync::Mutex};
@@ -130,28 +131,23 @@ impl ExternalEmbedder {
         })
     }
 
-    pub async fn embed(&self, texts: &[impl AsRef<str>]) -> Result<Vec<Vec<f32>>> {
+    pub fn embed(&self, texts: &[impl AsRef<str>]) -> Result<Vec<Vec<f32>>> {
         let inputs: Vec<String> = texts.iter().map(|t| t.as_ref().to_string()).collect();
         let req = ExternalRequest {
             input: &inputs,
             model: self.model_hint.clone(),
         };
-        let client = reqwest::Client::new();
+        let client = Client::new();
         let mut rb = client.post(&self.url).json(&req);
         if let Some(k) = &self.api_key {
             rb = rb.header("Authorization", format!("Bearer {}", k));
         }
-        let resp = rb
-            .send()
-            .await
-            .context("failed to call external embedder")?;
+        let resp = rb.send().context("failed to call external embedder")?;
         if resp.status() != StatusCode::OK {
             bail!("external embedder returned {}", resp.status());
         }
-        let parsed: ExternalResponse = resp
-            .json()
-            .await
-            .context("invalid JSON from external embedder")?;
+        let parsed: ExternalResponse =
+            resp.json().context("invalid JSON from external embedder")?;
         let out = parsed.data.into_iter().map(|i| i.embedding).collect();
         Ok(out)
     }
@@ -171,10 +167,10 @@ impl Embedder {
         }
     }
 
-    pub async fn embed(&self, texts: &[impl AsRef<str>]) -> Result<Vec<Vec<f32>>> {
+    pub fn embed(&self, texts: &[impl AsRef<str>]) -> Result<Vec<Vec<f32>>> {
         match self {
             Embedder::Local(m) => m.embed(texts),
-            Embedder::External(m) => m.embed(texts).await,
+            Embedder::External(m) => m.embed(texts),
         }
     }
 }
@@ -194,11 +190,5 @@ pub fn embed_text(text: &str) -> Result<Vec<f32>> {
 /// Embed a batch of texts.
 pub fn embed_batch(texts: &[impl AsRef<str>]) -> Result<Vec<Vec<f32>>> {
     let embedder = get_embedder()?;
-    match tokio::runtime::Handle::try_current() {
-        Ok(handle) => handle.block_on(embedder.embed(texts)),
-        Err(_) => {
-            let rt = tokio::runtime::Runtime::new().context("failed to create tokio runtime")?;
-            rt.block_on(embedder.embed(texts))
-        }
-    }
+    embedder.embed(texts)
 }
