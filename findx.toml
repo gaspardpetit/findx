@@ -13,3 +13,13 @@ extractor_cmd = "docling --to text"
 [embedding]
 provider = "disabled"
 
+[mirror]
+root = ".findx/raw"
+
+[bus.bounds]
+source_fs = 1024
+mirror_text = 1024
+
+[extract]
+pool_size = 4
+

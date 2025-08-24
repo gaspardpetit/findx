@@ -239,6 +239,16 @@ mod tests {
             embedding: EmbeddingConfig {
                 provider: "disabled".into(),
             },
+            mirror: crate::config::MirrorConfig {
+                root: Utf8PathBuf::from("raw"),
+            },
+            bus: crate::config::BusConfig {
+                bounds: crate::config::BusBounds {
+                    source_fs: 16,
+                    mirror_text: 16,
+                },
+            },
+            extract: crate::config::ExtractConfig { pool_size: 1 },
         };
 
         let conn = db::open(&db_path)?;
@@ -272,6 +282,16 @@ mod tests {
             embedding: EmbeddingConfig {
                 provider: "disabled".into(),
             },
+            mirror: crate::config::MirrorConfig {
+                root: Utf8PathBuf::from("raw"),
+            },
+            bus: crate::config::BusConfig {
+                bounds: crate::config::BusBounds {
+                    source_fs: 16,
+                    mirror_text: 16,
+                },
+            },
+            extract: crate::config::ExtractConfig { pool_size: 1 },
         };
 
         let conn = db::open(&db_path)?;
@@ -307,6 +327,16 @@ mod tests {
             embedding: EmbeddingConfig {
                 provider: "builtin".into(),
             },
+            mirror: crate::config::MirrorConfig {
+                root: Utf8PathBuf::from("raw"),
+            },
+            bus: crate::config::BusConfig {
+                bounds: crate::config::BusBounds {
+                    source_fs: 16,
+                    mirror_text: 16,
+                },
+            },
+            extract: crate::config::ExtractConfig { pool_size: 1 },
         };
 
         std::env::set_var("EMBEDDING_MODEL", "snowflake/snowflake-arctic-embed-xs");
@@ -343,6 +373,16 @@ mod tests {
             embedding: EmbeddingConfig {
                 provider: "builtin".into(),
             },
+            mirror: crate::config::MirrorConfig {
+                root: Utf8PathBuf::from("raw"),
+            },
+            bus: crate::config::BusConfig {
+                bounds: crate::config::BusBounds {
+                    source_fs: 16,
+                    mirror_text: 16,
+                },
+            },
+            extract: crate::config::ExtractConfig { pool_size: 1 },
         };
 
         std::env::set_var("EMBEDDING_MODEL", "snowflake/snowflake-arctic-embed-xs");
