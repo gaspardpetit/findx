@@ -1,20 +1,20 @@
 use camino::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FileMeta {
     pub file_uid: String,
     pub path: Utf8PathBuf,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FileMove {
     pub file_uid: String,
     pub from: Utf8PathBuf,
     pub to: Utf8PathBuf,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SourceEvent {
     SyncStarted,
@@ -55,7 +55,7 @@ pub enum SourceEvent {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum MirrorEvent {
     MirrorDocUpserted {

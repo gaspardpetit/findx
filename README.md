@@ -26,6 +26,8 @@ findx/
     main.rs
     cli.rs
     config.rs
+    bus.rs
+    events.rs
     db/
     fs/
     extract/
