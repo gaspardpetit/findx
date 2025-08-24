@@ -23,6 +23,9 @@ pub fn cold_scan(cfg: &Config) -> Result<()> {
     let mut seen: HashSet<Utf8PathBuf> = HashSet::new();
 
     for root in &cfg.roots {
+        if !root.exists() {
+            anyhow::bail!("root path not found: {}", root);
+        }
         let walker = WalkBuilder::new(root)
             .hidden(false)
             .follow_links(cfg.follow_symlinks)
