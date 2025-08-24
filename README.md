@@ -73,10 +73,11 @@ pool_size = 4
 ## Filesystem cataloging
 
 The `index` command performs a cold scan of the configured roots and
-stores file metadata in a SQLite database (`files` and `ops_log` tables).
-The `watch` command runs the scan and then watches for filesystem
-changes, updating the catalog as files are added, modified, or deleted.
-It listens for `SIGINT` and `SIGTERM` to shut down cleanly.
+publishes file metadata changes as `SyncDelta` events on an internal bus.
+The `watch` command runs the scan and continues emitting these events as
+the filesystem changes. A metadata service consumes them to update the
+SQLite `files` table, keeping the catalog current. It listens for
+`SIGINT` and `SIGTERM` to shut down cleanly.
 
 During indexing, a textual dashboard shows progress for files and chunks
 when running in a terminal, including the path of the file currently

@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 pub struct FileMeta {
     pub file_uid: String,
     pub path: Utf8PathBuf,
+    pub size: u64,
+    pub mtime_ns: i64,
+    pub quick_hash: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
