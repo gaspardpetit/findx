@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
@@ -196,7 +196,7 @@ fn build_glob_set(patterns: &[String]) -> Result<GlobSet> {
 }
 
 fn hash_file(path: &Utf8Path) -> Result<String> {
-    let mut file = File::open(path)?;
+    let mut file = File::open(path).with_context(|| format!("open file for hashing {path}"))?;
     let mut hasher = Xxh3::new();
     let mut buf = [0u8; 8192];
     loop {

@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 
     let _lock = match &cli.command {
         Command::Index(_) | Command::Watch(_) | Command::Oneshot(_) => {
-            let lock_path = Utf8PathBuf::from("state/index.lock");
+            let lock_path = Utf8PathBuf::from(".findx/state/index.lock");
             Some(Lockfile::acquire(lock_path)?)
         }
         _ => None,
