@@ -152,7 +152,7 @@ pub fn watch(cfg: &Config) -> Result<()> {
     )?;
     dashboard::init(total_files as u64);
     let dash = dashboard::get();
-    crate::index::reindex_all(cfg, dash)?;
+    crate::index::reindex_all_with_retry(cfg, dash, 3)?;
     let _spinner = dash.map(|d| d.watch_spinner());
 
     let (tx, rx) = channel();

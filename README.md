@@ -72,6 +72,9 @@ being processed. The dashboard is suppressed in non-console contexts.
 Set `LOG_LEVEL` (e.g. `debug`, `info`) to control log verbosity. Each
 run appends a plain text log to `.findx/index.log` with file statuses,
 chunk counts, and the final Tantivy index size.
+Transient `PermissionDenied` errors (such as antivirus scans locking
+Tantivy files on Windows) are detected and the index build automatically
+retries a few times.
 
 ## Content extraction
 

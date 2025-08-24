@@ -25,6 +25,7 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
   downloading from Hugging Face. Tests use
   `snowflake/snowflake-arctic-embed-xs` when `EMBEDDING_MODEL` is set.
  - Indexing progress displays the current file and appends a log at `.findx/index.log` with file statuses, chunk counts, and index size.
+- Transient `PermissionDenied` errors (e.g., Windows file locks) trigger a few automatic retries before failing.
 - `watch` listens for SIGINT and SIGTERM to exit cleanly.
 
 - Runtime state (e.g. the indexing lockfile) lives under `.findx/state`.
