@@ -15,6 +15,8 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
 - Content extraction uses a configurable command (`extractor_cmd`, default `docling --to text`) to populate a `documents` table; plain text files are read directly. The extractor command is parsed with shell-style rules so arguments may be quoted.
 - Tantivy-based BM25 index built under `tantivy_index`
 - Chunk index stored under `tantivy_index/chunks`
+- Tokenization preserves decimals and dotted acronyms so exact section numbers
+  and abbreviations remain searchable.
 - Embeddings stored in SQLite `embeddings` table for semantic search.
   Local embeddings use the `fastembed` crate by default and cache models under
   `.findx/fastembed_cache`; set `EMBEDDING_URL`
@@ -46,6 +48,8 @@ cargo check
 cargo test
 ```
 
+All new or modified features should include unit tests.
+
 Snapshot artifacts for `main` come from `.github/workflows/snapshot.yml`.
 Releases are published with `.github/workflows/release.yml`, which builds and uploads binaries for Linux, macOS, and Windows when a tag is pushed.
 
@@ -56,4 +60,5 @@ Keep documentation current. Update `README.md` and this `AGENTS.md` whenever pro
 - [ ] `cargo fmt --all`
 - [ ] `cargo check`
 - [ ] `cargo test`
+- [ ] New or modified features are covered by unit tests
 - [ ] Docs updated (`README.md`, `AGENTS.md`, others)

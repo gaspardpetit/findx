@@ -7,7 +7,7 @@ use camino::Utf8Path;
 use tantivy::schema::{
     Field, Schema, SchemaBuilder, TextFieldIndexing, TextOptions, STORED, STRING,
 };
-use tantivy::tokenizer::{LowerCaser, RemoveLongFilter, SimpleTokenizer, TextAnalyzer};
+use tantivy::tokenizer::{LowerCaser, RegexTokenizer, RemoveLongFilter, TextAnalyzer};
 use tantivy::{doc, Index};
 use walkdir::WalkDir;
 
@@ -141,16 +141,13 @@ fn build_chunk_schema() -> (Schema, ChunkFields) {
 
 pub fn register_tokenizers(index: &Index) {
     let manager = index.tokenizers();
-    let en = TextAnalyzer::builder(SimpleTokenizer::default())
+    let pattern = r"(?:\d+(?:\.\d+)+)|(?:(?:[A-Za-z]\.){2,}[A-Za-z]?)|\p{L}+|\p{N}+";
+    let base = TextAnalyzer::builder(RegexTokenizer::new(pattern).unwrap())
         .filter(LowerCaser)
         .filter(RemoveLongFilter::limit(40))
         .build();
-    manager.register("en", en);
-    let fr = TextAnalyzer::builder(SimpleTokenizer::default())
-        .filter(LowerCaser)
-        .filter(RemoveLongFilter::limit(40))
-        .build();
-    manager.register("fr", fr);
+    manager.register("en", base.clone());
+    manager.register("fr", base);
 }
 
 /// Rebuild the entire Tantivy index from the SQLite catalog.
@@ -344,4 +341,31 @@ fn dir_size(path: &Utf8Path) -> Result<u64> {
         }
     }
     Ok(size)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+    use tantivy::schema::Schema;
+    use tantivy::Index;
+
+    #[test]
+    fn tokenizer_handles_decimals_and_dotted_acronyms() -> Result<()> {
+        let schema = Schema::builder().build();
+        let index = Index::create_in_ram(schema);
+        register_tokenizers(&index);
+        let mut tokenizer = index.tokenizers().get("en").unwrap();
+
+        let mut tokens = Vec::new();
+        tokenizer
+            .token_stream("See C.c.Q. art 12.4.1 and 123.45 with I.B.M.")
+            .process(&mut |t| tokens.push(t.text.clone()));
+
+        assert!(tokens.contains(&"c.c.q.".to_string()));
+        assert!(tokens.contains(&"i.b.m.".to_string()));
+        assert!(tokens.contains(&"12.4.1".to_string()));
+        assert!(tokens.contains(&"123.45".to_string()));
+        Ok(())
+    }
 }
