@@ -1,15 +1,17 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use camino::Utf8Path;
 use rusqlite::{params, Connection};
 
 /// Open a connection to the SQLite database at `path` and ensure the schema.
 pub fn open(path: &Utf8Path) -> Result<Connection> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("create db parent dir {parent}"))?;
     }
-    let conn = Connection::open(path.as_str())?;
+    tracing::debug!(%path, "opening database");
+    let conn = Connection::open(path.as_str()).with_context(|| format!("open db at {path}"))?;
     conn.execute_batch(
         r#"
         PRAGMA journal_mode=WAL;

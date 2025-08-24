@@ -25,6 +25,8 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
   `snowflake/snowflake-arctic-embed-xs` when `EMBEDDING_MODEL` is set.
 - `watch` listens for SIGINT and SIGTERM to exit cleanly.
 
+- Runtime state (e.g. the indexing lockfile) lives under `.findx/state`.
+
 ## Standards
 - Rust 1.88+
 - Format code with `cargo fmt --all`

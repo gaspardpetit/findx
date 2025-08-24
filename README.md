@@ -10,7 +10,7 @@ findx index
 findx query rust documentation
 ```
 
-The commands above index the current directory and place all data under `.findx/`. Query defaults to a hybrid search mode.
+The commands above index the current directory and place all data under `.findx/`, creating the directory if it does not exist. Runtime state such as the lockfile lives under `.findx/state`. Query defaults to a hybrid search mode.
 
 ## Dependencies
 
