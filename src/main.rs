@@ -1,11 +1,14 @@
+mod bus;
 mod chunk;
 mod cli;
 mod config;
 mod db;
 mod embed;
+mod events;
 mod extract;
 mod fs;
 mod index;
+mod metadata;
 mod search;
 mod util;
 
@@ -14,6 +17,7 @@ use camino::Utf8PathBuf;
 use clap::Parser;
 use cli::{Cli, Command, OneshotArgs, WatchArgs};
 use serde::Serialize;
+use std::sync::{atomic::AtomicBool, Arc, Mutex};
 use util::logging;
 use util::{dashboard, lock::Lockfile};
 
@@ -36,6 +40,15 @@ async fn main() -> Result<()> {
         Ok(c) => c,
         Err(_) => config::Config::default(),
     };
+
+    let conn = db::open(&cfg.db)?;
+    let bus = bus::EventBus::new(&cfg.bus.bounds, Arc::new(Mutex::new(conn)));
+    let bus_meta = bus.clone();
+    let cfg_meta = cfg.clone();
+    std::thread::spawn(move || {
+        let _ = metadata::run(bus_meta, &cfg_meta);
+    });
+    let mut fs_state = fs::FsState::default();
 
     match &cli.command {
         Command::Index(args)
@@ -79,7 +92,7 @@ async fn main() -> Result<()> {
     match &cli.command {
         Command::Index(_) => {
             tracing::info!(?cfg, "index");
-            fs::cold_scan(&cfg)?;
+            fs::cold_scan(&cfg, &bus, &mut fs_state)?;
             let conn = db::open(&cfg.db)?;
             let total_files: i64 = conn.query_row(
                 "SELECT COUNT(*) FROM files WHERE status='active'",
@@ -92,12 +105,13 @@ async fn main() -> Result<()> {
         }
         Command::Watch(w) => {
             tracing::info!(threads = w.threads, ?cfg, "watch");
-            fs::watch(&cfg)?;
+            let stop = AtomicBool::new(false);
+            fs::watch(&cfg, bus.clone(), &stop)?;
         }
         Command::Query(q) => {
             if !cfg.db.exists() || !cfg.tantivy_index.exists() {
                 println!("No index found, creating one under {:?}", cfg.tantivy_index);
-                fs::cold_scan(&cfg)?;
+                fs::cold_scan(&cfg, &bus, &mut fs_state)?;
                 let conn = db::open(&cfg.db)?;
                 let total_files: i64 = conn.query_row(
                     "SELECT COUNT(*) FROM files WHERE status='active'",
@@ -131,7 +145,7 @@ async fn main() -> Result<()> {
         }
         Command::Oneshot(o) => {
             tracing::info!(mode = ?o.query.mode, query = %o.query.query, ?cfg, "oneshot");
-            fs::cold_scan(&cfg)?;
+            fs::cold_scan(&cfg, &bus, &mut fs_state)?;
             let conn = db::open(&cfg.db)?;
             let total_files: i64 = conn.query_row(
                 "SELECT COUNT(*) FROM files WHERE status='active'",

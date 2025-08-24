@@ -8,5 +8,6 @@ pub mod events;
 pub mod extract;
 pub mod fs;
 pub mod index;
+pub mod metadata;
 pub mod search;
 pub mod util;
