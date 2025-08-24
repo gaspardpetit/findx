@@ -56,6 +56,16 @@ fn indexes_various_document_types() -> anyhow::Result<()> {
         embedding: EmbeddingConfig {
             provider: "disabled".into(),
         },
+        mirror: findx::config::MirrorConfig {
+            root: root.join("raw"),
+        },
+        bus: findx::config::BusConfig {
+            bounds: findx::config::BusBounds {
+                source_fs: 16,
+                mirror_text: 16,
+            },
+        },
+        extract: findx::config::ExtractConfig { pool_size: 1 },
     };
 
     // Scan filesystem and extract contents

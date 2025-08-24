@@ -10,6 +10,58 @@ pub struct EmbeddingConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct MirrorConfig {
+    pub root: Utf8PathBuf,
+}
+
+impl Default for MirrorConfig {
+    fn default() -> Self {
+        Self {
+            root: Utf8PathBuf::from(".findx/raw"),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BusBounds {
+    pub source_fs: usize,
+    pub mirror_text: usize,
+}
+
+impl Default for BusBounds {
+    fn default() -> Self {
+        Self {
+            source_fs: 1024,
+            mirror_text: 1024,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BusConfig {
+    pub bounds: BusBounds,
+}
+
+impl Default for BusConfig {
+    fn default() -> Self {
+        Self {
+            bounds: BusBounds::default(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ExtractConfig {
+    pub pool_size: usize,
+}
+
+impl Default for ExtractConfig {
+    fn default() -> Self {
+        Self { pool_size: 4 }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub db: Utf8PathBuf,
     pub tantivy_index: Utf8PathBuf,
@@ -24,6 +76,12 @@ pub struct Config {
     #[serde(default = "default_extractor_cmd")]
     pub extractor_cmd: String,
     pub embedding: EmbeddingConfig,
+    #[serde(default)]
+    pub mirror: MirrorConfig,
+    #[serde(default)]
+    pub bus: BusConfig,
+    #[serde(default)]
+    pub extract: ExtractConfig,
 }
 
 impl Default for Config {
@@ -48,6 +106,9 @@ impl Default for Config {
             embedding: EmbeddingConfig {
                 provider: "disabled".into(),
             },
+            mirror: MirrorConfig::default(),
+            bus: BusConfig::default(),
+            extract: ExtractConfig::default(),
         }
     }
 }
@@ -62,4 +123,15 @@ impl Config {
 
 fn default_extractor_cmd() -> String {
     "docling --to text".into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_mirror_root() {
+        let cfg = Config::default();
+        assert_eq!(cfg.mirror.root, Utf8PathBuf::from(".findx/raw"));
+    }
 }

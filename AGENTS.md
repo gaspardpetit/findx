@@ -11,6 +11,7 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
 - `tools/` – helper scripts and container files
 - `Dockerfile` – container image for running the CLI
 - `findx.toml` – sample configuration
+- `src/events.rs` – event enum definitions
 - `src/util/dashboard.rs` – terminal dashboard for indexing progress
 - Content extraction uses a configurable command (`extractor_cmd`, default `docling --to text`) to populate a `documents` table; plain text files are read directly. The extractor command is parsed with shell-style rules so arguments may be quoted.
 - Tantivy-based BM25 index built under `tantivy_index`

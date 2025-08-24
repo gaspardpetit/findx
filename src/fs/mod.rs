@@ -249,6 +249,16 @@ mod tests {
             embedding: crate::config::EmbeddingConfig {
                 provider: "disabled".into(),
             },
+            mirror: crate::config::MirrorConfig {
+                root: Utf8PathBuf::from("raw"),
+            },
+            bus: crate::config::BusConfig {
+                bounds: crate::config::BusBounds {
+                    source_fs: 16,
+                    mirror_text: 16,
+                },
+            },
+            extract: crate::config::ExtractConfig { pool_size: 1 },
         };
 
         cold_scan(&cfg)?;
