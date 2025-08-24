@@ -946,6 +946,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "findx"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "atty",
+ "blake3",
+ "camino",
+ "chrono",
+ "clap",
+ "ctrlc",
+ "fastembed",
+ "globset",
+ "ignore",
+ "indicatif",
+ "metrics",
+ "notify",
+ "num_cpus",
+ "once_cell",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tantivy",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
+ "xxhash-rust",
+]
+
+[[package]]
 name = "flate2"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1796,40 +1830,6 @@ name = "litemap"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
-
-[[package]]
-name = "localindex"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "atty",
- "blake3",
- "camino",
- "chrono",
- "clap",
- "ctrlc",
- "fastembed",
- "globset",
- "ignore",
- "indicatif",
- "metrics",
- "notify",
- "num_cpus",
- "once_cell",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "tantivy",
- "tempfile",
- "thiserror 1.0.69",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
- "walkdir",
- "xxhash-rust",
-]
 
 [[package]]
 name = "log"

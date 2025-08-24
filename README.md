@@ -1,7 +1,7 @@
-[![Rust](https://github.com/gaspardpetit/localindex/actions/workflows/rust.yml/badge.svg)](https://github.com/gaspardpetit/localindex/actions/workflows/rust.yml)
-# localindex
+[![Rust](https://github.com/gaspardpetit/findx/actions/workflows/rust.yml/badge.svg)](https://github.com/gaspardpetit/findx/actions/workflows/rust.yml)
+# findx
 
-`localindex` is a Rust CLI for indexing and searching local documents. It scans files under configured roots, extracts textual content, and builds a searchable [Tantivy](https://tantivy-search.github.io/) index.
+`findx` is a Rust CLI for indexing and searching local documents. It scans files under configured roots, extracts textual content, and builds a searchable [Tantivy](https://tantivy-search.github.io/) index.
 
 ## Dependencies
 
@@ -10,7 +10,7 @@ A complete list of build and run-time dependencies is available in [doc/dependen
 ## Layout
 
 ```
-localindex/
+findx/
   Cargo.toml
   src/
     main.rs
@@ -29,7 +29,7 @@ localindex/
 
 ## Configuration
 
-The application reads settings from a TOML file. A sample `localindex.toml` is provided:
+The application reads settings from a TOML file. A sample `findx.toml` is provided:
 
 ```toml
 db = "state/catalog.db"
@@ -63,7 +63,7 @@ verbosity.
 
 ## Content extraction
 
-During indexing, `localindex` converts documents to plain text using a
+During indexing, `findx` converts documents to plain text using a
 configurable command (`extractor_cmd`). By default it invokes the
 [`docling`](https://github.com/docling) CLI. Basic text formats like
 `.txt` or `.md` are read directly without invoking an external tool.
@@ -72,12 +72,12 @@ and page counts.
 
 ## Keyword search
 
-After a scan completes, `localindex` builds a BM25 index using Tantivy.
+After a scan completes, `findx` builds a BM25 index using Tantivy.
 Documents are indexed into language-specific fields (`body_en`, `body_fr`) based on the
 detected language. Keyword queries return the top matches with scores and metadata:
 
 ```bash
-localindex query --tantivy-index state/idx --db state/catalog.db \
+findx query --tantivy-index state/idx --db state/catalog.db \
   --mode keyword --top-k 20 "project timeline"
 ```
 
@@ -94,7 +94,7 @@ table and indexed separately under `tantivy_index/chunks`. Queries can target ch
 of whole documents by passing `--chunks`:
 
 ```bash
-localindex query --tantivy-index state/idx --db state/catalog.db \
+findx query --tantivy-index state/idx --db state/catalog.db \
   --mode keyword --chunks "project kickoff agenda"
 ```
 
@@ -108,15 +108,15 @@ Example chunk result:
 
 Chunks can be embedded into vectors for multilingual semantic search. When the
 embedding provider is enabled (`embedding.provider = "builtin"`), each chunk is
-encoded and stored in an `embeddings` table. By default `localindex` uses a
+encoded and stored in an `embeddings` table. By default `findx` uses a
 Rust native embedder powered by [fastembed](https://crates.io/crates/fastembed)
 and downloads a supported model the first time it runs. You can hint another
 model by setting `EMBEDDING_MODEL` to a name from
 `TextEmbedding::list_supported_models()`. If the requested model is unsupported
-or cannot be downloaded, `localindex` returns an error instead of falling back
+or cannot be downloaded, `findx` returns an error instead of falling back
 to a default embedding model.
 
-Before attempting a network download, `localindex` looks for model files under
+Before attempting a network download, `findx` looks for model files under
 `models/<model_name>/`. Supplying an ONNX model and tokenizer files in this
 directory lets you run entirely offline. For example, to use the small
 `snowflake/snowflake-arctic-embed-xs` model in tests, place its
@@ -132,14 +132,14 @@ in the request payload for provider-specific model selection.
 Semantic search queries the stored vectors directly:
 
 ```bash
-localindex query --tantivy-index state/idx --db state/catalog.db \
+findx query --tantivy-index state/idx --db state/catalog.db \
   --mode semantic "How do we set up continuous integration?"
 ```
 
 Hybrid search combines BM25 and semantic scores using reciprocal rank fusion:
 
 ```bash
-localindex query --tantivy-index state/idx --db state/catalog.db \
+findx query --tantivy-index state/idx --db state/catalog.db \
   --mode hybrid "performance optimization techniques"
 ```
 
@@ -153,27 +153,27 @@ cargo build
 
 ## Releases
 
-Prebuilt binaries for Linux, macOS, and Windows are available on the [GitHub Releases](https://github.com/gaspardpetit/localindex/releases) page.
-These binaries embed the release tag; verify with `localindex --version`.
+Prebuilt binaries for Linux, macOS, and Windows are available on the [GitHub Releases](https://github.com/gaspardpetit/findx/releases) page.
+These binaries embed the release tag; verify with `findx --version`.
 
 Snapshot artifacts for the `main` branch are published by the `snapshot` workflow.
 
 ## Docker
 
-A published container image can run `localindex` against a mounted directory. Bind a host path to `/data` and pass your config.
+A published container image can run `findx` against a mounted directory. Bind a host path to `/data` and pass your config.
 
 ### Index and query
 
 ```bash
-docker run --rm -v "$(pwd)":/data ghcr.io/gaspardpetit/localindex:latest index --config /data/localindex.toml
-docker run --rm -v "$(pwd)":/data ghcr.io/gaspardpetit/localindex:latest query --config /data/localindex.toml --mode keyword "project timeline"
+docker run --rm -v "$(pwd)":/data ghcr.io/gaspardpetit/findx:latest index --config /data/findx.toml
+docker run --rm -v "$(pwd)":/data ghcr.io/gaspardpetit/findx:latest query --config /data/findx.toml --mode keyword "project timeline"
 ```
 
 ### Watch and exec
 
 ```bash
-docker run -d --name li -v "$(pwd)":/data ghcr.io/gaspardpetit/localindex:latest watch --config /data/localindex.toml
-docker exec li localindex query --config /data/localindex.toml --mode keyword "project timeline"
+docker run -d --name li -v "$(pwd)":/data ghcr.io/gaspardpetit/findx:latest watch --config /data/findx.toml
+docker exec li findx query --config /data/findx.toml --mode keyword "project timeline"
 ```
 
 

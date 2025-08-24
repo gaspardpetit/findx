@@ -1,3 +1,3 @@
 # Examples
 
-Usage examples for the `localindex` CLI.
+Usage examples for the `findx` CLI.
