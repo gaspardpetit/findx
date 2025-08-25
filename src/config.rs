@@ -71,6 +71,45 @@ fn default_jobs_bound() -> usize {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct RetentionConfig {
+    #[serde(default = "default_events_days")]
+    pub events_days: u64,
+    #[serde(default = "default_jobs_keep_per_file")]
+    pub jobs_keep_per_file: usize,
+    #[serde(default = "default_jobs_failed_days")]
+    pub jobs_failed_days: u64,
+    #[serde(default = "default_files_tombstone_days")]
+    pub files_tombstone_days: u64,
+}
+
+impl Default for RetentionConfig {
+    fn default() -> Self {
+        Self {
+            events_days: default_events_days(),
+            jobs_keep_per_file: default_jobs_keep_per_file(),
+            jobs_failed_days: default_jobs_failed_days(),
+            files_tombstone_days: default_files_tombstone_days(),
+        }
+    }
+}
+
+fn default_events_days() -> u64 {
+    14
+}
+
+fn default_jobs_keep_per_file() -> usize {
+    3
+}
+
+fn default_jobs_failed_days() -> u64 {
+    14
+}
+
+fn default_files_tombstone_days() -> u64 {
+    30
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub db: Utf8PathBuf,
     pub tantivy_index: Utf8PathBuf,
@@ -95,6 +134,8 @@ pub struct Config {
     pub bus: BusConfig,
     #[serde(default)]
     pub extract: ExtractConfig,
+    #[serde(default)]
+    pub retention: RetentionConfig,
 }
 
 impl Default for Config {
@@ -124,6 +165,7 @@ impl Default for Config {
             mirror: MirrorConfig::default(),
             bus: BusConfig::default(),
             extract: ExtractConfig::default(),
+            retention: RetentionConfig::default(),
         }
     }
 }
@@ -148,5 +190,14 @@ mod tests {
     fn default_mirror_root() {
         let cfg = Config::default();
         assert_eq!(cfg.mirror.root, Utf8PathBuf::from(".findx/raw"));
+    }
+
+    #[test]
+    fn default_retention() {
+        let cfg = Config::default();
+        assert_eq!(cfg.retention.events_days, 14);
+        assert_eq!(cfg.retention.jobs_keep_per_file, 3);
+        assert_eq!(cfg.retention.jobs_failed_days, 14);
+        assert_eq!(cfg.retention.files_tombstone_days, 30);
     }
 }

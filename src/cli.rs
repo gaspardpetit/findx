@@ -54,6 +54,8 @@ pub enum Command {
     Status,
     #[command(about = "Reconcile mirror and catalog state")]
     Reconcile,
+    #[command(about = "Run database retention tasks")]
+    Maintain,
 }
 
 #[derive(Args, Debug, Default)]

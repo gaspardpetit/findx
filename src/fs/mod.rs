@@ -286,7 +286,7 @@ mod tests {
     use crate::db;
     use crate::{
         bus::EventBus,
-        config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig},
+        config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig, RetentionConfig},
     };
     use std::sync::{atomic::AtomicBool, Arc, Mutex};
     use std::time::Duration;
@@ -329,6 +329,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         };
 
         let conn = db::open(&cfg.db)?;

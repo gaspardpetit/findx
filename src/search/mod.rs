@@ -214,7 +214,7 @@ mod tests {
     use camino::Utf8PathBuf;
     use tempfile::tempdir;
 
-    use crate::config::{Config, EmbeddingConfig};
+    use crate::config::{Config, EmbeddingConfig, RetentionConfig};
     use crate::db;
     use rusqlite::params;
 
@@ -254,6 +254,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         };
 
         let conn = db::open(&db_path)?;
@@ -302,6 +303,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         };
 
         let conn = db::open(&db_path)?;
@@ -352,6 +354,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         };
 
         std::env::set_var("EMBEDDING_MODEL", "snowflake/snowflake-arctic-embed-xs");
@@ -403,6 +406,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         };
 
         std::env::set_var("EMBEDDING_MODEL", "snowflake/snowflake-arctic-embed-xs");

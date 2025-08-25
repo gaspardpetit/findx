@@ -213,7 +213,7 @@ fn now() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig};
+    use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig, RetentionConfig};
     use std::sync::{atomic::AtomicBool, Arc};
     use std::time::Duration;
     use tempfile::tempdir;
@@ -255,6 +255,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         };
 
         let conn = db::open(&cfg.db)?;
@@ -340,6 +341,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         };
 
         let conn = db::open(&cfg.db)?;

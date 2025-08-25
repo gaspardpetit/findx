@@ -72,6 +72,12 @@ mirror_text = 1024
 [extract]
 pool_size = 4
 jobs_bound = 2048
+
+[retention]
+events_days = 14
+jobs_keep_per_file = 3
+jobs_failed_days = 14
+files_tombstone_days = 30
 ```
 
 ## Filesystem cataloging
@@ -117,6 +123,19 @@ remain stable across platforms.
 If mirror artifacts are removed or fall out of sync with the catalog,
 `findx reconcile` will republish extraction jobs for missing files and
 delete orphaned mirror directories.
+
+## Maintenance
+
+Run periodic retention to keep the SQLite catalog from growing without bound:
+
+```bash
+findx maintain
+```
+
+Retention thresholds are configured under `[retention]` in `findx.toml`.
+By default, events older than 14 days are pruned, only the latest three
+extraction jobs per file are kept, failed jobs are dropped after 14 days,
+and files marked deleted are purged after 30 days.
 
 ## Keyword search
 

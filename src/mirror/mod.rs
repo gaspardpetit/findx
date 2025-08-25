@@ -360,7 +360,7 @@ fn now() -> i64 {
 mod tests {
     use super::*;
     use crate::bus::EventBus;
-    use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig};
+    use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig, RetentionConfig};
     use std::collections::HashSet;
     use std::fs;
     use std::sync::atomic::AtomicBool;
@@ -400,6 +400,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 8,
             },
+            retention: RetentionConfig::default(),
         };
         let conn = db::open(&cfg.db)?;
         conn.execute(
@@ -491,6 +492,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 8,
             },
+            retention: RetentionConfig::default(),
         };
         let conn = db::open(&cfg.db)?;
         conn.execute(
@@ -561,6 +563,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 8,
             },
+            retention: RetentionConfig::default(),
         };
         let conn = db::open(&cfg.db)?;
         conn.execute(

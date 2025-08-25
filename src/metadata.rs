@@ -152,7 +152,7 @@ fn now() -> i64 {
 mod tests {
     use super::*;
     use crate::bus::EventBus;
-    use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig};
+    use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig, RetentionConfig};
     use camino::Utf8PathBuf;
     use std::sync::{
         atomic::{AtomicBool, Ordering},
@@ -197,6 +197,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         };
 
         let conn = db::open(&cfg.db)?;
