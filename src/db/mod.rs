@@ -20,6 +20,9 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
           realpath TEXT UNIQUE NOT NULL,
           size INTEGER NOT NULL,
           mtime_ns INTEGER NOT NULL,
+          fast_sig TEXT,
+          is_offline INTEGER NOT NULL DEFAULT 0,
+          attrs INTEGER,
           inode_hint TEXT,
           mime TEXT,
           hash TEXT,
@@ -80,7 +83,8 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
           attempt INTEGER NOT NULL DEFAULT 0,
           started_ts INTEGER,
           finished_ts INTEGER,
-          error TEXT
+          error TEXT,
+          UNIQUE(file_uid, content_hash)
         );
         CREATE TABLE IF NOT EXISTS mirror_docs (
           file_uid TEXT PRIMARY KEY,

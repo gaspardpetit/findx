@@ -52,6 +52,8 @@ include = ["**/*.pdf", "**/*.docx", "**/*.md", "**/*.txt"]
 exclude = ["**/.git/**", "**/~$*"]
 max_file_size_mb = 200
 follow_symlinks = false
+include_hidden = false
+allow_offline_hydration = false
 commit_interval_secs = 45
 guard_interval_secs = 180
 default_language = "auto"
@@ -69,6 +71,7 @@ mirror_text = 1024
 
 [extract]
 pool_size = 4
+jobs_bound = 2048
 ```
 
 ## Filesystem cataloging
@@ -101,6 +104,7 @@ arguments containing spaces may be quoted. Workers listen for
 `ExtractionRequested` events and emit `ExtractionCompleted` events with
 page-aware text for downstream consumers. Jobs are tracked in an
 `extract_jobs` table for traceability.
+Page block `start` and `end` offsets are counted in UTF-8 characters, not bytes.
 
 Extraction output is mirrored under `.findx/raw/<relpath>/` where each
 document directory contains a `meta.json` file and a streaming

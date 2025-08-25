@@ -232,6 +232,8 @@ mod tests {
             exclude: vec![],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "en".into(),
@@ -248,7 +250,10 @@ mod tests {
                     mirror_text: 16,
                 },
             },
-            extract: crate::config::ExtractConfig { pool_size: 1 },
+            extract: crate::config::ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 16,
+            },
         };
 
         let conn = db::open(&db_path)?;
@@ -275,6 +280,8 @@ mod tests {
             exclude: vec![],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "en".into(),
@@ -291,7 +298,10 @@ mod tests {
                     mirror_text: 16,
                 },
             },
-            extract: crate::config::ExtractConfig { pool_size: 1 },
+            extract: crate::config::ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 16,
+            },
         };
 
         let conn = db::open(&db_path)?;
@@ -320,6 +330,8 @@ mod tests {
             exclude: vec![],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "en".into(),
@@ -336,7 +348,10 @@ mod tests {
                     mirror_text: 16,
                 },
             },
-            extract: crate::config::ExtractConfig { pool_size: 1 },
+            extract: crate::config::ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 16,
+            },
         };
 
         std::env::set_var("EMBEDDING_MODEL", "snowflake/snowflake-arctic-embed-xs");
@@ -366,6 +381,8 @@ mod tests {
             exclude: vec![],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "en".into(),
@@ -382,7 +399,10 @@ mod tests {
                     mirror_text: 16,
                 },
             },
-            extract: crate::config::ExtractConfig { pool_size: 1 },
+            extract: crate::config::ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 16,
+            },
         };
 
         std::env::set_var("EMBEDDING_MODEL", "snowflake/snowflake-arctic-embed-xs");

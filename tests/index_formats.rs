@@ -54,6 +54,8 @@ fn indexes_various_document_types() -> anyhow::Result<()> {
         exclude: vec![],
         max_file_size_mb: 200,
         follow_symlinks: false,
+        include_hidden: false,
+        allow_offline_hydration: false,
         commit_interval_secs: 45,
         guard_interval_secs: 180,
         default_language: "en".into(),
@@ -70,7 +72,10 @@ fn indexes_various_document_types() -> anyhow::Result<()> {
                 mirror_text: 16,
             },
         },
-        extract: findx::config::ExtractConfig { pool_size: 1 },
+        extract: findx::config::ExtractConfig {
+            pool_size: 1,
+            jobs_bound: 16,
+        },
     };
 
     // Scan filesystem and extract contents (legacy path pending new pipeline)

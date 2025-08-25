@@ -309,6 +309,8 @@ mod tests {
             exclude: vec![],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
@@ -325,12 +327,15 @@ mod tests {
                     mirror_text: 8,
                 },
             },
-            extract: ExtractConfig { pool_size: 1 },
+            extract: ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 8,
+            },
         };
         let conn = db::open(&cfg.db)?;
         conn.execute(
-            "INSERT INTO files (realpath, size, mtime_ns, inode_hint, hash, status, created_ts, updated_ts) VALUES (?1,0,0,?2,?3,'active',0,0)",
-            params![root.join("a.txt").as_str(), "f1", "h1"],
+            "INSERT INTO files (realpath, size, mtime_ns, fast_sig, is_offline, attrs, inode_hint, status, created_ts, updated_ts) VALUES (?1,0,0,'sig',0,0,?2,'active',0,0)",
+            params![root.join("a.txt").as_str(), "f1"],
         )?;
         let bus = EventBus::new(&cfg.bus.bounds, Arc::new(Mutex::new(conn)));
         let rx = bus.subscribe_mirror();

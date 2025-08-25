@@ -20,7 +20,7 @@ const PLAINTEXT_EXTS: &[&str] = &["txt", "md", "rs", "toml", "json", "cpp", "c",
 /// and emit `ExtractionCompleted` or `ExtractionFailed` events.
 pub fn run_pool(bus: EventBus, cfg: &Config, stop: &AtomicBool) -> Result<()> {
     let rx_events = bus.subscribe_source();
-    let (job_tx, job_rx) = bounded::<(String, String)>(cfg.bus.bounds.source_fs);
+    let (job_tx, job_rx) = bounded::<String>(cfg.extract.jobs_bound);
 
     for _ in 0..cfg.extract.pool_size {
         let rx = job_rx.clone();
@@ -33,11 +33,8 @@ pub fn run_pool(bus: EventBus, cfg: &Config, stop: &AtomicBool) -> Result<()> {
     while !stop.load(Ordering::SeqCst) {
         match rx_events.recv_timeout(Duration::from_millis(100)) {
             Ok(env) => match env.data {
-                SourceEvent::ExtractionRequested {
-                    file_uid,
-                    content_hash,
-                } => {
-                    let _ = job_tx.send((file_uid, content_hash));
+                SourceEvent::ExtractionRequested { file_uid } => {
+                    let _ = job_tx.send(file_uid);
                 }
                 _ => {}
             },
@@ -48,19 +45,52 @@ pub fn run_pool(bus: EventBus, cfg: &Config, stop: &AtomicBool) -> Result<()> {
     Ok(())
 }
 
-fn worker_loop(rx: Receiver<(String, String)>, bus: EventBus, cfg: Config, db_path: Utf8PathBuf) {
+fn worker_loop(rx: Receiver<String>, bus: EventBus, cfg: Config, db_path: Utf8PathBuf) {
     let conn = db::open(&db_path).expect("open db");
-    while let Ok((file_uid, content_hash)) = rx.recv() {
+    while let Ok(file_uid) = rx.recv() {
         let started_ts = now();
-        let _ = conn.execute(
-            "INSERT INTO extract_jobs (file_uid, content_hash, status, attempt, started_ts) VALUES (?1, ?2, 'running', 1, ?3)",
-            params![file_uid, content_hash, started_ts],
-        );
-        match extract_one(&conn, &cfg, &bus, &file_uid, &content_hash) {
+        let path_hash: Result<(Utf8PathBuf, String), anyhow::Error> = (|| {
+            let path_str: String = conn.query_row(
+                "SELECT realpath FROM files WHERE inode_hint=?1",
+                params![file_uid],
+                |r| r.get(0),
+            )?;
+            let path = Utf8PathBuf::from(path_str);
+            let content_hash = hash_file(&path)?;
+            Ok((path, content_hash))
+        })();
+        let (path, content_hash) = match path_hash {
+            Ok(v) => v,
+            Err(e) => {
+                let _ = conn.execute(
+                    "INSERT INTO extract_jobs (file_uid, content_hash, status, attempt, started_ts, finished_ts, error) VALUES (?1, '', 'failed', 1, ?2, ?3, ?4)",
+                    params![file_uid, started_ts, started_ts, e.to_string()],
+                );
+                let _ = bus.publish_source(SourceEvent::ExtractionFailed {
+                    file_uid: file_uid.clone(),
+                    error: e.to_string(),
+                });
+                continue;
+            }
+        };
+        let inserted = conn
+            .execute(
+                "INSERT INTO extract_jobs (file_uid, content_hash, status, attempt, started_ts) VALUES (?1, ?2, 'running', 1, ?3) ON CONFLICT(file_uid, content_hash) DO NOTHING",
+                params![file_uid, content_hash, started_ts],
+            )
+            .unwrap_or(0);
+        if inserted == 0 {
+            continue;
+        }
+        match extract_one(&conn, &cfg, &bus, &file_uid, &content_hash, &path) {
             Ok(()) => {
                 let finished_ts = now();
                 let _ = conn.execute(
                     "UPDATE extract_jobs SET status='done', finished_ts=?3 WHERE file_uid=?1 AND content_hash=?2",
+                    params![file_uid, content_hash, finished_ts],
+                );
+                let _ = conn.execute(
+                    "UPDATE files SET hash=?2, updated_ts=?3 WHERE inode_hint=?1",
                     params![file_uid, content_hash, finished_ts],
                 );
             }
@@ -80,19 +110,14 @@ fn worker_loop(rx: Receiver<(String, String)>, bus: EventBus, cfg: Config, db_pa
 }
 
 fn extract_one(
-    conn: &Connection,
+    _conn: &Connection,
     cfg: &Config,
     bus: &EventBus,
     file_uid: &str,
     content_hash: &str,
+    path: &Utf8Path,
 ) -> Result<()> {
-    let path_str: String = conn.query_row(
-        "SELECT realpath FROM files WHERE inode_hint=?1",
-        params![file_uid],
-        |r| r.get(0),
-    )?;
-    let path = Utf8PathBuf::from(path_str);
-    let (extractor, extractor_version, pages) = extract_pages(&path, cfg)?;
+    let (extractor, extractor_version, pages) = extract_pages(path, cfg)?;
     bus.publish_source(SourceEvent::ExtractionCompleted {
         file_uid: file_uid.to_string(),
         content_hash: content_hash.to_string(),
@@ -162,6 +187,21 @@ fn run_command(cmd: &str, path: &Utf8Path) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+fn hash_file(path: &Utf8Path) -> Result<String> {
+    use std::io::Read;
+    let mut file = std::fs::File::open(path)?;
+    let mut hasher = xxhash_rust::xxh3::Xxh3::new();
+    let mut buf = [0u8; 8192];
+    loop {
+        let n = file.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(format!("{:016x}", hasher.digest()))
+}
+
 fn now() -> i64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
@@ -193,6 +233,8 @@ mod tests {
             exclude: vec![],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
@@ -209,14 +251,17 @@ mod tests {
                     mirror_text: 16,
                 },
             },
-            extract: ExtractConfig { pool_size: 1 },
+            extract: ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 16,
+            },
         };
 
         let conn = db::open(&cfg.db)?;
         // Insert file metadata so worker can find path
         conn.execute(
-            "INSERT INTO files (realpath, size, mtime_ns, inode_hint, hash, status, created_ts, updated_ts) VALUES (?1,0,0,?2,?3,'active',0,0)",
-            params![file_path.as_str(), "f1", "h1"],
+            "INSERT INTO files (realpath, size, mtime_ns, fast_sig, is_offline, attrs, inode_hint, status, created_ts, updated_ts) VALUES (?1,0,0,'sig',0,0,?2,'active',0,0)",
+            params![file_path.as_str(), "f1"],
         )?;
         let bus = EventBus::new(&cfg.bus.bounds, Arc::new(std::sync::Mutex::new(conn)));
         let rx = bus.subscribe_source();
@@ -231,7 +276,6 @@ mod tests {
 
         bus.publish_source(SourceEvent::ExtractionRequested {
             file_uid: "f1".into(),
-            content_hash: "h1".into(),
         })?;
 
         use crossbeam_channel::RecvTimeoutError;
@@ -256,6 +300,85 @@ mod tests {
         assert_eq!(pages[0].end, 3);
         assert_eq!(pages[1].start, 4);
         assert_eq!(pages[1].end, 7);
+        Ok(())
+    }
+
+    #[test]
+    fn dedup_jobs() -> Result<()> {
+        let tmp = tempdir()?;
+        let root = Utf8PathBuf::from_path_buf(tmp.path().to_path_buf()).unwrap();
+        let file_path = root.join("a.txt");
+        std::fs::write(&file_path, "hello")?;
+
+        let cfg = crate::config::Config {
+            db: root.join("catalog.db"),
+            tantivy_index: Utf8PathBuf::from("idx"),
+            roots: vec![root.clone()],
+            include: vec!["**/*.txt".into()],
+            exclude: vec![],
+            max_file_size_mb: 200,
+            follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
+            commit_interval_secs: 45,
+            guard_interval_secs: 180,
+            default_language: "auto".into(),
+            extractor_cmd: String::new(),
+            embedding: crate::config::EmbeddingConfig {
+                provider: "disabled".into(),
+            },
+            mirror: MirrorConfig {
+                root: Utf8PathBuf::from("raw"),
+            },
+            bus: BusConfig {
+                bounds: BusBounds {
+                    source_fs: 16,
+                    mirror_text: 16,
+                },
+            },
+            extract: ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 16,
+            },
+        };
+
+        let conn = db::open(&cfg.db)?;
+        conn.execute(
+            "INSERT INTO files (realpath, size, mtime_ns, fast_sig, is_offline, attrs, inode_hint, status, created_ts, updated_ts) VALUES (?1,0,0,'sig',0,0,?2,'active',0,0)",
+            params![file_path.as_str(), "f1"],
+        )?;
+        let bus = EventBus::new(&cfg.bus.bounds, Arc::new(std::sync::Mutex::new(conn)));
+        let rx = bus.subscribe_source();
+        let stop = Arc::new(AtomicBool::new(false));
+        let bus_run = bus.clone();
+        let cfg_run = cfg.clone();
+        let stop_run = stop.clone();
+        std::thread::spawn(move || {
+            run_pool(bus_run, &cfg_run, &stop_run).unwrap();
+        });
+        std::thread::sleep(Duration::from_millis(200));
+
+        bus.publish_source(SourceEvent::ExtractionRequested {
+            file_uid: "f1".into(),
+        })?;
+        bus.publish_source(SourceEvent::ExtractionRequested {
+            file_uid: "f1".into(),
+        })?;
+
+        let mut completed = 0;
+        for _ in 0..50 {
+            match rx.recv_timeout(Duration::from_millis(200)) {
+                Ok(env) => {
+                    if let SourceEvent::ExtractionCompleted { .. } = env.data {
+                        completed += 1;
+                    }
+                }
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(e) => return Err(e.into()),
+            }
+        }
+        stop.store(true, Ordering::SeqCst);
+        assert_eq!(completed, 1);
         Ok(())
     }
 }

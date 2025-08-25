@@ -5,7 +5,6 @@ use std::sync::{
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
-use camino::Utf8Path;
 use rusqlite::params;
 
 use crate::bus::EventBus;
@@ -28,8 +27,8 @@ pub fn run(bus: EventBus, cfg: &Config, stop: &AtomicBool) -> Result<()> {
                     moved,
                     deleted,
                 } => {
-                    handle_added(&bus, &conn, &added)?;
-                    handle_modified(&bus, &conn, &modified)?;
+                    handle_added(&bus, &conn, cfg, &added)?;
+                    handle_modified(&bus, &conn, cfg, &modified)?;
                     handle_moved(&conn, &moved)?;
                     handle_deleted(&conn, &deleted)?;
                 }
@@ -45,22 +44,34 @@ pub fn run(bus: EventBus, cfg: &Config, stop: &AtomicBool) -> Result<()> {
 fn handle_added(
     bus: &EventBus,
     conn: &Arc<Mutex<rusqlite::Connection>>,
+    cfg: &Config,
     files: &[FileMeta],
 ) -> Result<()> {
     for f in files {
-        let content_hash = hash_file(&f.path)?;
         let now_ts = now();
         let conn = conn.lock().unwrap();
+        let status = if f.is_offline { "offline" } else { "active" };
         conn.execute(
-            "INSERT OR REPLACE INTO files (realpath, size, mtime_ns, hash, inode_hint, status, created_ts, updated_ts) VALUES (?1, ?2, ?3, ?4, ?5, 'active', ?6, ?6)",
-            params![f.path.as_str(), f.size as i64, f.mtime_ns, content_hash, f.file_uid, now_ts],
+            "INSERT OR REPLACE INTO files (realpath, size, mtime_ns, fast_sig, is_offline, attrs, inode_hint, status, created_ts, updated_ts) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
+            params![
+                f.path.as_str(),
+                f.size as i64,
+                f.mtime_ns,
+                f.fast_sig,
+                f.is_offline as i64,
+                f.attrs as i64,
+                f.file_uid,
+                status,
+                now_ts
+            ],
         )?;
         db::log_op(&conn, "add", None, Some(f.path.as_str()), None)?;
         drop(conn);
-        bus.publish_source(SourceEvent::ExtractionRequested {
-            file_uid: f.file_uid.clone(),
-            content_hash,
-        })?;
+        if !f.is_offline || cfg.allow_offline_hydration {
+            bus.publish_source(SourceEvent::ExtractionRequested {
+                file_uid: f.file_uid.clone(),
+            })?;
+        }
     }
     Ok(())
 }
@@ -68,22 +79,32 @@ fn handle_added(
 fn handle_modified(
     bus: &EventBus,
     conn: &Arc<Mutex<rusqlite::Connection>>,
+    cfg: &Config,
     files: &[FileMeta],
 ) -> Result<()> {
     for f in files {
-        let content_hash = hash_file(&f.path)?;
         let now_ts = now();
         let conn = conn.lock().unwrap();
         conn.execute(
-            "UPDATE files SET realpath=?2, size=?3, mtime_ns=?4, hash=?5, status='active', updated_ts=?6 WHERE inode_hint=?1",
-            params![f.file_uid, f.path.as_str(), f.size as i64, f.mtime_ns, content_hash, now_ts],
+            "UPDATE files SET realpath=?2, size=?3, mtime_ns=?4, fast_sig=?5, is_offline=?6, attrs=?7, hash=NULL, status='active', updated_ts=?8 WHERE inode_hint=?1",
+            params![
+                f.file_uid,
+                f.path.as_str(),
+                f.size as i64,
+                f.mtime_ns,
+                f.fast_sig,
+                f.is_offline as i64,
+                f.attrs as i64,
+                now_ts
+            ],
         )?;
         db::log_op(&conn, "mod", Some(f.path.as_str()), None, None)?;
         drop(conn);
-        bus.publish_source(SourceEvent::ExtractionRequested {
-            file_uid: f.file_uid.clone(),
-            content_hash,
-        })?;
+        if !f.is_offline || cfg.allow_offline_hydration {
+            bus.publish_source(SourceEvent::ExtractionRequested {
+                file_uid: f.file_uid.clone(),
+            })?;
+        }
     }
     Ok(())
 }
@@ -120,29 +141,12 @@ fn handle_deleted(conn: &Arc<Mutex<rusqlite::Connection>>, files: &[FileMeta]) -
     Ok(())
 }
 
-fn hash_file(path: &Utf8Path) -> Result<String> {
-    use std::io::Read;
-    let mut file = std::fs::File::open(path)?;
-    let mut hasher = Xxh3::new();
-    let mut buf = [0u8; 8192];
-    loop {
-        let n = file.read(&mut buf)?;
-        if n == 0 {
-            break;
-        }
-        hasher.update(&buf[..n]);
-    }
-    Ok(format!("{:016x}", hasher.digest()))
-}
-
 fn now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs() as i64
 }
-
-use xxhash_rust::xxh3::Xxh3;
 
 #[cfg(test)]
 mod tests {
@@ -171,6 +175,8 @@ mod tests {
             exclude: vec![],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
@@ -187,7 +193,10 @@ mod tests {
                     mirror_text: 16,
                 },
             },
-            extract: ExtractConfig { pool_size: 1 },
+            extract: ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 16,
+            },
         };
 
         let conn = db::open(&cfg.db)?;
