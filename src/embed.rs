@@ -2,7 +2,6 @@ use anyhow::{anyhow, bail, Context, Result};
 use camino::Utf8PathBuf;
 use fastembed::{
     EmbeddingModel, 
-    InitOptions,
     TextInitOptions,
     InitOptionsUserDefined,
     TextEmbedding,
@@ -28,7 +27,7 @@ impl LocalEmbedder {
         let model = if let Some(m) = load_local_model(&model_name)? {
             m
         } else {
-            let parsed = model_name
+            let _parsed = model_name
                 .parse::<EmbeddingModel>()
                 .map_err(|_| anyhow!("unsupported embedding model '{}'", model_name))?;
             let cache_dir = Utf8PathBuf::from(".findx/fastembed_cache");
