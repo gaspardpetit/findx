@@ -18,6 +18,14 @@ pub struct FileMove {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct PageBlock {
+    pub page_no: u32,
+    pub text: String,
+    pub start: usize,
+    pub end: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SourceEvent {
     SyncStarted,
@@ -51,6 +59,9 @@ pub enum SourceEvent {
     ExtractionCompleted {
         file_uid: String,
         content_hash: String,
+        extractor: String,
+        extractor_version: String,
+        pages: Vec<PageBlock>,
     },
     ExtractionFailed {
         file_uid: String,

@@ -91,14 +91,15 @@ retries a few times.
 
 ## Content extraction
 
-During indexing, `findx` converts documents to plain text using a
-configurable command (`extractor_cmd`). By default it invokes the
+`findx` converts documents to plain text using a worker pool that runs the
+configurable `extractor_cmd`. By default it invokes the
 [`docling`](https://github.com/docling) CLI with `--to text`. Basic text
 formats like `.txt` or `.md` are read directly without invoking an
 external tool. The command line is parsed with shell-style rules, so
-arguments containing spaces may be quoted.
-Results are stored in a `documents` table with metadata such as language
-and page counts.
+arguments containing spaces may be quoted. Workers listen for
+`ExtractionRequested` events and emit `ExtractionCompleted` events with
+page-aware text for downstream consumers. Jobs are tracked in an
+`extract_jobs` table for traceability.
 
 ## Keyword search
 
