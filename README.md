@@ -110,6 +110,9 @@ Extraction output is mirrored under `.findx/raw/<relpath>/` where each
 document directory contains a `meta.json` file and a streaming
 `chunks.jsonl`. The mirror builder emits `MirrorDocUpserted` and
 `MirrorChunkUpserted` events so indexers can work incrementally.
+Mirror files are written atomically via temporary files and renames, and
+chunk identifiers are normalized (line endings, trailing whitespace) to
+remain stable across platforms.
 
 ## Keyword search
 
