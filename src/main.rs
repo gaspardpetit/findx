@@ -45,8 +45,10 @@ async fn main() -> Result<()> {
     let bus = bus::EventBus::new(&cfg.bus.bounds, Arc::new(Mutex::new(conn)));
     let bus_meta = bus.clone();
     let cfg_meta = cfg.clone();
+    let meta_stop = Arc::new(AtomicBool::new(false));
+    let meta_stop_thread = meta_stop.clone();
     std::thread::spawn(move || {
-        let _ = metadata::run(bus_meta, &cfg_meta);
+        let _ = metadata::run(bus_meta, &cfg_meta, &meta_stop_thread);
     });
     let mut fs_state = fs::FsState::default();
 

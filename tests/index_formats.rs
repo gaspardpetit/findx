@@ -4,7 +4,10 @@ use tempfile::tempdir;
 
 use findx::config::{Config, EmbeddingConfig};
 use findx::{bus::EventBus, fs as findx_fs, index, metadata, search};
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 
 #[test]
 #[ignore]
@@ -75,8 +78,10 @@ fn indexes_various_document_types() -> anyhow::Result<()> {
     let bus = EventBus::new(&cfg.bus.bounds, Arc::new(Mutex::new(conn)));
     let bus_meta = bus.clone();
     let cfg_meta = cfg.clone();
-    std::thread::spawn(move || {
-        let _ = metadata::run(bus_meta, &cfg_meta);
+    let stop_meta = Arc::new(AtomicBool::new(false));
+    let stop_thread = stop_meta.clone();
+    let handle = std::thread::spawn(move || {
+        let _ = metadata::run(bus_meta, &cfg_meta, &stop_thread);
     });
     let mut state = findx_fs::FsState::default();
     findx_fs::cold_scan(&cfg, &bus, &mut state)?;
@@ -100,5 +105,7 @@ fn indexes_various_document_types() -> anyhow::Result<()> {
         );
     }
 
+    stop_meta.store(true, Ordering::SeqCst);
+    handle.join().unwrap();
     Ok(())
 }

@@ -1,5 +1,8 @@
-use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
 use camino::Utf8Path;
@@ -9,28 +12,31 @@ use crate::bus::EventBus;
 use crate::config::Config;
 use crate::db;
 use crate::events::{FileMeta, FileMove, SourceEvent};
+use crossbeam_channel::RecvTimeoutError;
 
 /// Run the metadata service, consuming `source.fs` events and updating the
 /// `files` table. Added and modified files trigger `ExtractionRequested` events.
-pub fn run(bus: EventBus, cfg: &Config) -> Result<()> {
+pub fn run(bus: EventBus, cfg: &Config, stop: &AtomicBool) -> Result<()> {
     let conn = Arc::new(Mutex::new(db::open(&cfg.db)?));
     let rx = bus.subscribe_source();
-    let publish_bus = bus.clone();
-    drop(bus);
-    while let Ok(env) = rx.recv() {
-        match env.data {
-            SourceEvent::SyncDelta {
-                added,
-                modified,
-                moved,
-                deleted,
-            } => {
-                handle_added(&publish_bus, &conn, &added)?;
-                handle_modified(&publish_bus, &conn, &modified)?;
-                handle_moved(&conn, &moved)?;
-                handle_deleted(&conn, &deleted)?;
-            }
-            _ => {}
+    while !stop.load(Ordering::SeqCst) {
+        match rx.recv_timeout(Duration::from_millis(100)) {
+            Ok(env) => match env.data {
+                SourceEvent::SyncDelta {
+                    added,
+                    modified,
+                    moved,
+                    deleted,
+                } => {
+                    handle_added(&bus, &conn, &added)?;
+                    handle_modified(&bus, &conn, &modified)?;
+                    handle_moved(&conn, &moved)?;
+                    handle_deleted(&conn, &deleted)?;
+                }
+                _ => {}
+            },
+            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::Disconnected) => break,
         }
     }
     Ok(())
@@ -144,7 +150,10 @@ mod tests {
     use crate::bus::EventBus;
     use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig};
     use camino::Utf8PathBuf;
-    use std::sync::Arc;
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    };
     use std::time::Duration;
     use tempfile::tempdir;
 
@@ -185,8 +194,10 @@ mod tests {
         let bus = EventBus::new(&cfg.bus.bounds, Arc::new(Mutex::new(conn)));
         let bus_meta = bus.clone();
         let cfg_meta = cfg.clone();
+        let stop = Arc::new(AtomicBool::new(false));
+        let stop_run = stop.clone();
         let handle = std::thread::spawn(move || {
-            run(bus_meta, &cfg_meta).unwrap();
+            run(bus_meta, &cfg_meta, &stop_run).unwrap();
         });
 
         let mut state = crate::fs::FsState::default();
@@ -213,6 +224,7 @@ mod tests {
         assert_eq!(uid, uid2);
         assert!(path.ends_with("b.txt"));
 
+        stop.store(true, Ordering::SeqCst);
         drop(bus);
         handle.join().unwrap();
         Ok(())
