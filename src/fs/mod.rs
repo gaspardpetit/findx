@@ -1,19 +1,15 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, UNIX_EPOCH};
-
-use anyhow::{Context, Result};
-use camino::{Utf8Path, Utf8PathBuf};
-use globset::{Glob, GlobSet, GlobSetBuilder};
-use ignore::WalkBuilder;
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use xxhash_rust::xxh3::Xxh3;
 
 use crate::bus::EventBus;
 use crate::config::Config;
 use crate::events::{FileMeta, FileMove, SourceEvent};
+use anyhow::Result;
+use camino::{Utf8Path, Utf8PathBuf};
+use globset::{Glob, GlobSet, GlobSetBuilder};
+use ignore::WalkBuilder;
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 
 /// In-memory state of previously seen files keyed by `file_uid`.
 #[derive(Default)]
@@ -27,7 +23,9 @@ struct FileInfo {
     path: Utf8PathBuf,
     size: u64,
     mtime_ns: i64,
-    quick_hash: String,
+    fast_sig: String,
+    is_offline: bool,
+    attrs: u64,
 }
 
 /// Perform a full scan over configured roots and publish a `SyncDelta` event with
@@ -57,6 +55,23 @@ pub fn cold_scan(cfg: &Config, bus: &EventBus, state: &mut FsState) -> Result<()
                 Some(p) => p.to_owned(),
                 None => continue,
             };
+            if !cfg.include_hidden {
+                if path
+                    .file_name()
+                    .map(|n| n.starts_with('.'))
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
+            }
+            let mirror_root = if cfg.mirror.root.is_absolute() {
+                cfg.mirror.root.clone()
+            } else {
+                root.join(&cfg.mirror.root)
+            };
+            if path.starts_with(&mirror_root) {
+                continue;
+            }
             if !include.is_match(path.as_std_path()) || exclude.is_match(path.as_std_path()) {
                 continue;
             }
@@ -123,10 +138,7 @@ fn emit_delta(bus: &EventBus, state: &FsState, current: &HashMap<String, FileInf
                     from: old.path.clone(),
                     to: info.path.clone(),
                 });
-            } else if old.size != info.size
-                || old.mtime_ns != info.mtime_ns
-                || old.quick_hash != info.quick_hash
-            {
+            } else if old.fast_sig != info.fast_sig {
                 modified.push(to_meta(info));
             }
         } else {
@@ -160,7 +172,9 @@ fn to_meta(info: &FileInfo) -> FileMeta {
         path: info.path.clone(),
         size: info.size,
         mtime_ns: info.mtime_ns,
-        quick_hash: info.quick_hash.clone(),
+        fast_sig: info.fast_sig.clone(),
+        is_offline: info.is_offline,
+        attrs: info.attrs,
     }
 }
 
@@ -168,14 +182,16 @@ fn gather_info(path: &Utf8Path) -> Result<FileInfo> {
     let meta = std::fs::metadata(path)?;
     let size = meta.len();
     let mtime_ns = meta.modified()?.duration_since(UNIX_EPOCH)?.as_nanos() as i64;
-    let quick_hash = hash_file(path)?;
+    let (fast_sig, is_offline, attrs) = compute_fast_sig(&meta);
     let file_uid = compute_file_uid(&meta, path);
     Ok(FileInfo {
         file_uid,
         path: path.to_owned(),
         size,
         mtime_ns,
-        quick_hash,
+        fast_sig,
+        is_offline,
+        attrs,
     })
 }
 
@@ -203,18 +219,48 @@ fn build_glob_set(patterns: &[String]) -> Result<GlobSet> {
     Ok(builder.build()?)
 }
 
-fn hash_file(path: &Utf8Path) -> Result<String> {
-    let mut file = File::open(path).with_context(|| format!("open file for hashing {path}"))?;
-    let mut hasher = Xxh3::new();
-    let mut buf = [0u8; 8192];
-    loop {
-        let n = file.read(&mut buf)?;
-        if n == 0 {
-            break;
-        }
-        hasher.update(&buf[..n]);
+fn compute_fast_sig(meta: &std::fs::Metadata) -> (String, bool, u64) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_OFFLINE: u32 = 0x00001000;
+        const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: u32 = 0x00400000;
+        let attrs = meta.file_attributes();
+        let is_offline =
+            attrs & (FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) != 0;
+        let fast_sig = format!(
+            "{:x}:{:x}:{:x}:{:x}:{:x}",
+            meta.file_index_high(),
+            meta.file_index_low(),
+            meta.file_size(),
+            meta.last_write_time(),
+            attrs
+        );
+        (fast_sig, is_offline, attrs as u64)
     }
-    Ok(format!("{:016x}", hasher.digest()))
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let fast_sig = format!(
+            "{:x}:{:x}:{:x}:{:x}:{:x}",
+            meta.dev(),
+            meta.ino(),
+            meta.size(),
+            meta.mtime_nsec(),
+            meta.ctime_nsec()
+        );
+        (fast_sig, false, 0)
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let mtime = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map_or(0, |d| d.as_nanos());
+        let fast_sig = format!("{}:{}", meta.len(), mtime);
+        (fast_sig, false, 0)
+    }
 }
 
 #[cfg(test)]
@@ -244,6 +290,8 @@ mod tests {
             exclude: vec![],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
@@ -260,7 +308,10 @@ mod tests {
                     mirror_text: 16,
                 },
             },
-            extract: ExtractConfig { pool_size: 1 },
+            extract: ExtractConfig {
+                pool_size: 1,
+                jobs_bound: 16,
+            },
         };
 
         let conn = db::open(&cfg.db)?;

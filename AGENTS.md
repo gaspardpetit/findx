@@ -16,6 +16,9 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
 - `src/mirror/mod.rs` – builds the on-disk text mirror and emits mirror events
 - `src/util/dashboard.rs` – terminal dashboard for indexing progress
 - Content extraction is handled by a worker pool. It reads plain text files directly and runs the configured `extractor_cmd` (default `docling --to text`) for other formats, parsing the command with shell-style rules. Extraction results are emitted as events and jobs are tracked in `extract_jobs`.
+- Hidden files are skipped by default; set `include_hidden=true` to index them. Cloud placeholders marked offline are skipped unless `allow_offline_hydration=true`.
+- The extractor queue is bounded separately with `extract.jobs_bound` (default 2048).
+- Page block `start` and `end` offsets refer to UTF-8 characters.
 - Tantivy-based BM25 index built under `tantivy_index`
 - Chunk index stored under `tantivy_index/chunks`
 - Tokenization preserves decimals and dotted acronyms so exact section numbers

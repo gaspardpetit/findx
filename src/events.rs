@@ -7,7 +7,9 @@ pub struct FileMeta {
     pub path: Utf8PathBuf,
     pub size: u64,
     pub mtime_ns: i64,
-    pub quick_hash: String,
+    pub fast_sig: String,
+    pub is_offline: bool,
+    pub attrs: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -54,7 +56,6 @@ pub enum SourceEvent {
     },
     ExtractionRequested {
         file_uid: String,
-        content_hash: String,
     },
     ExtractionCompleted {
         file_uid: String,

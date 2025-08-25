@@ -53,12 +53,21 @@ impl Default for BusConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct ExtractConfig {
     pub pool_size: usize,
+    #[serde(default = "default_jobs_bound")]
+    pub jobs_bound: usize,
 }
 
 impl Default for ExtractConfig {
     fn default() -> Self {
-        Self { pool_size: 4 }
+        Self {
+            pool_size: 4,
+            jobs_bound: default_jobs_bound(),
+        }
     }
+}
+
+fn default_jobs_bound() -> usize {
+    2048
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -70,6 +79,10 @@ pub struct Config {
     pub exclude: Vec<String>,
     pub max_file_size_mb: u64,
     pub follow_symlinks: bool,
+    #[serde(default)]
+    pub include_hidden: bool,
+    #[serde(default)]
+    pub allow_offline_hydration: bool,
     pub commit_interval_secs: u64,
     pub guard_interval_secs: u64,
     pub default_language: String,
@@ -99,6 +112,8 @@ impl Default for Config {
             exclude: vec!["**/.git/**".into(), "**/~$*".into()],
             max_file_size_mb: 200,
             follow_symlinks: false,
+            include_hidden: false,
+            allow_offline_hydration: false,
             commit_interval_secs: 45,
             guard_interval_secs: 180,
             default_language: "auto".into(),
