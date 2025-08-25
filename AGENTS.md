@@ -62,6 +62,7 @@ All new or modified features should include unit tests.
 
 Snapshot artifacts for `main` come from `.github/workflows/snapshot.yml`.
 Releases are published with `.github/workflows/release.yml`, which builds and uploads binaries for Linux, macOS, and Windows when a tag is pushed.
+`Cargo.toml` intentionally omits a package version; workflows set `FINDX_VERSION` from the current git tag.
 
 ## Documentation
 Keep documentation current. Update `README.md` and this `AGENTS.md` whenever project behavior or structure changes.

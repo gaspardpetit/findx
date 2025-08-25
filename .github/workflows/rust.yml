@@ -16,7 +16,21 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Compute version metadata
+      id: meta
+      shell: bash
+      run: |
+        if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+          VERSION="${GITHUB_REF_NAME}"
+        else
+          VERSION="$(git describe --tags --always --dirty)"
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
     - name: Build
+      env:
+        FINDX_VERSION: ${{ steps.meta.outputs.version }}
       run: cargo build --verbose
     - name: Run tests
+      env:
+        FINDX_VERSION: ${{ steps.meta.outputs.version }}
       run: cargo test --verbose
