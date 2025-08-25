@@ -101,13 +101,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.dmeta.outputs.tags }}
           labels: ${{ steps.dmeta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-            GIT_SHA=${{ steps.meta.outputs.sha }}
-            BUILD_DATE=${{ steps.meta.outputs.date }}
+
 
       - name: Sign the published Docker image ( ${{ matrix.variant.name }} )
         if: ${{ github.event_name != 'pull_request' }}
