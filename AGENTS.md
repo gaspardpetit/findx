@@ -19,6 +19,9 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
 - Hidden files are skipped by default; set `include_hidden=true` to index them. Cloud placeholders marked offline are skipped unless `allow_offline_hydration=true`.
 - The extractor queue is bounded separately with `extract.jobs_bound` (default 2048).
 - Page block `start` and `end` offsets refer to UTF-8 characters.
+- Mirror artifacts (`meta.json`, `chunks.jsonl`) are written atomically
+  using temporary files and renames. Chunk identifiers normalize line
+  endings and strip trailing whitespace to stay stable across platforms.
 - Tantivy-based BM25 index built under `tantivy_index`
 - Chunk index stored under `tantivy_index/chunks`
 - Tokenization preserves decimals and dotted acronyms so exact section numbers
