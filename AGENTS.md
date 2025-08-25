@@ -14,6 +14,7 @@ This repository contains `findx`, a Rust CLI for indexing and searching local do
 - `src/events.rs` – event enum definitions
 - `src/metadata.rs` – consumes filesystem events and maintains file metadata
 - `src/mirror/mod.rs` – builds the on-disk text mirror and emits mirror events
+- `src/reconcile.rs` – reconciles the mirror on disk with cataloged files
 - `src/util/dashboard.rs` – terminal dashboard for indexing progress
 - Content extraction is handled by a worker pool. It reads plain text files directly and runs the configured `extractor_cmd` (default `docling --to text`) for other formats, parsing the command with shell-style rules. Extraction results are emitted as events and jobs are tracked in `extract_jobs`.
 - Hidden files are skipped by default; set `include_hidden=true` to index them. Cloud placeholders marked offline are skipped unless `allow_offline_hydration=true`.

@@ -52,6 +52,8 @@ pub enum Command {
     Migrate(MigrateArgs),
     #[command(about = "Show indexing status (not yet implemented)")]
     Status,
+    #[command(about = "Reconcile mirror and catalog state")]
+    Reconcile,
 }
 
 #[derive(Args, Debug, Default)]

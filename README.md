@@ -114,6 +114,10 @@ Mirror files are written atomically via temporary files and renames, and
 chunk identifiers are normalized (line endings, trailing whitespace) to
 remain stable across platforms.
 
+If mirror artifacts are removed or fall out of sync with the catalog,
+`findx reconcile` will republish extraction jobs for missing files and
+delete orphaned mirror directories.
+
 ## Keyword search
 
 After a scan completes, `findx` builds a BM25 index using Tantivy.

@@ -10,5 +10,6 @@ pub mod fs;
 pub mod index;
 pub mod metadata;
 pub mod mirror;
+pub mod reconcile;
 pub mod search;
 pub mod util;
