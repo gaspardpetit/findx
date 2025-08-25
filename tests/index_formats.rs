@@ -2,7 +2,7 @@ use camino::Utf8PathBuf;
 use std::{fs, process::Command};
 use tempfile::tempdir;
 
-use findx::config::{Config, EmbeddingConfig};
+use findx::config::{Config, EmbeddingConfig, RetentionConfig};
 use findx::{bus::EventBus, fs as findx_fs, index, metadata, search};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -76,6 +76,7 @@ fn indexes_various_document_types() -> anyhow::Result<()> {
             pool_size: 1,
             jobs_bound: 16,
         },
+        retention: RetentionConfig::default(),
     };
 
     // Scan filesystem and extract contents (legacy path pending new pipeline)

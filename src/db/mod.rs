@@ -15,6 +15,7 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
     conn.execute_batch(
         r#"
         PRAGMA journal_mode=WAL;
+        PRAGMA wal_autocheckpoint=1000;
         CREATE TABLE IF NOT EXISTS files (
           id INTEGER PRIMARY KEY,
           realpath TEXT UNIQUE NOT NULL,

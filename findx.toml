@@ -26,3 +26,9 @@ mirror_text = 1024
 pool_size = 4
 jobs_bound = 2048
 
+[retention]
+events_days = 14
+jobs_keep_per_file = 3
+jobs_failed_days = 14
+files_tombstone_days = 30
+

@@ -87,7 +87,7 @@ fn relativize(path: &Utf8Path, roots: &[Utf8PathBuf]) -> Utf8PathBuf {
 mod tests {
     use super::*;
     use crate::bus::EventBus;
-    use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig};
+    use crate::config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig, RetentionConfig};
     use crossbeam_channel::RecvTimeoutError;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
@@ -124,6 +124,7 @@ mod tests {
                 pool_size: 1,
                 jobs_bound: 16,
             },
+            retention: RetentionConfig::default(),
         }
     }
 

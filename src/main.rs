@@ -8,6 +8,7 @@ mod events;
 mod extract;
 mod fs;
 mod index;
+mod maintain;
 mod metadata;
 mod mirror;
 mod reconcile;
@@ -208,6 +209,10 @@ async fn main() -> Result<()> {
         Command::Reconcile => {
             tracing::info!(?cfg, "reconcile");
             reconcile::run(&bus, &cfg)?;
+        }
+        Command::Maintain => {
+            tracing::info!(?cfg, "maintain");
+            maintain::run(&cfg)?;
         }
     }
 
