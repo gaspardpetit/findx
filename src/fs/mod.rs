@@ -1,3 +1,6 @@
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
+
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, UNIX_EPOCH};
@@ -199,14 +202,28 @@ fn compute_file_uid(meta: &std::fs::Metadata, _path: &Utf8Path) -> String {
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
-        format!("ux-{}:{}", meta.dev(), meta.ino())
+        return format!("ux-{}:{}", meta.dev(), meta.ino());
     }
-    #[cfg(not(unix))]
+
+    #[cfg(windows)]
+    {
+        // Requires: #[cfg(windows)] use std::os::windows::fs::MetadataExt;
+        let id = ((meta.file_index_high() as u64) << 32) | (meta.file_index_low() as u64);
+        return format!("win-{id:016x}");
+    }
+
+    // Fallback for other targets: hash more than just size to avoid trivial collisions
+    #[allow(unreachable_code)]
     {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
-        let _ = _path;
         hasher.update(meta.len().to_le_bytes());
+        if let Ok(modified) = meta.modified() {
+            if let Ok(ns) = modified.duration_since(std::time::UNIX_EPOCH) {
+                hasher.update(ns.as_nanos().to_le_bytes());
+            }
+        }
+        hasher.update(_path.as_str().as_bytes());
         format!("fp-{:x}", hasher.finalize())
     }
 }
