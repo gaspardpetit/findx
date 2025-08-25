@@ -10,6 +10,7 @@ mod fs;
 mod index;
 mod metadata;
 mod mirror;
+mod reconcile;
 mod search;
 mod util;
 
@@ -203,6 +204,10 @@ async fn main() -> Result<()> {
         Command::Status => {
             tracing::info!("status");
             println!("'status' command is not implemented yet");
+        }
+        Command::Reconcile => {
+            tracing::info!(?cfg, "reconcile");
+            reconcile::run(&bus, &cfg)?;
         }
     }
 
