@@ -72,6 +72,16 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
           idempotency_key TEXT NOT NULL,
           payload TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS extract_jobs (
+          id INTEGER PRIMARY KEY,
+          file_uid TEXT NOT NULL,
+          content_hash TEXT NOT NULL,
+          status TEXT NOT NULL,
+          attempt INTEGER NOT NULL DEFAULT 0,
+          started_ts INTEGER,
+          finished_ts INTEGER,
+          error TEXT
+        );
         "#,
     )?;
     Ok(conn)
