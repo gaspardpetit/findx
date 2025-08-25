@@ -31,6 +31,7 @@ findx/
     db/
     fs/
     extract/
+    mirror/
     index/
     search/
     util/
@@ -100,6 +101,11 @@ arguments containing spaces may be quoted. Workers listen for
 `ExtractionRequested` events and emit `ExtractionCompleted` events with
 page-aware text for downstream consumers. Jobs are tracked in an
 `extract_jobs` table for traceability.
+
+Extraction output is mirrored under `.findx/raw/<relpath>/` where each
+document directory contains a `meta.json` file and a streaming
+`chunks.jsonl`. The mirror builder emits `MirrorDocUpserted` and
+`MirrorChunkUpserted` events so indexers can work incrementally.
 
 ## Keyword search
 

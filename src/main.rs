@@ -9,6 +9,7 @@ mod extract;
 mod fs;
 mod index;
 mod metadata;
+mod mirror;
 mod search;
 mod util;
 
@@ -49,6 +50,20 @@ async fn main() -> Result<()> {
     let meta_stop_thread = meta_stop.clone();
     std::thread::spawn(move || {
         let _ = metadata::run(bus_meta, &cfg_meta, &meta_stop_thread);
+    });
+    let bus_extract = bus.clone();
+    let cfg_extract = cfg.clone();
+    let extract_stop = Arc::new(AtomicBool::new(false));
+    let extract_stop_thread = extract_stop.clone();
+    std::thread::spawn(move || {
+        let _ = extract::run_pool(bus_extract, &cfg_extract, &extract_stop_thread);
+    });
+    let bus_mirror = bus.clone();
+    let cfg_mirror = cfg.clone();
+    let mirror_stop = Arc::new(AtomicBool::new(false));
+    let mirror_stop_thread = mirror_stop.clone();
+    std::thread::spawn(move || {
+        let _ = mirror::run(bus_mirror, &cfg_mirror, &mirror_stop_thread);
     });
     let mut fs_state = fs::FsState::default();
 

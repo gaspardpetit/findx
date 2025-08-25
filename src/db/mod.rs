@@ -82,6 +82,18 @@ pub fn open(path: &Utf8Path) -> Result<Connection> {
           finished_ts INTEGER,
           error TEXT
         );
+        CREATE TABLE IF NOT EXISTS mirror_docs (
+          file_uid TEXT PRIMARY KEY,
+          content_hash TEXT NOT NULL,
+          path TEXT NOT NULL,
+          updated_ts INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS mirror_chunks (
+          chunk_id TEXT PRIMARY KEY,
+          file_uid TEXT NOT NULL,
+          ord INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS mirror_chunks_file ON mirror_chunks(file_uid);
         "#,
     )?;
     Ok(conn)
