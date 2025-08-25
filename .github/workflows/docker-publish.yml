@@ -26,7 +26,7 @@ jobs:
         variant:
           - name: cli
             suffix: ""
-            dockerfile: deploy\Dockerfile.bundle
+            dockerfile: deploy/Dockerfile.bundle
 
     steps:
       - name: Checkout repository
