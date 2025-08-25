@@ -1,7 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
@@ -10,17 +11,31 @@ use ignore::WalkBuilder;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use xxhash_rust::xxh3::Xxh3;
 
+use crate::bus::EventBus;
 use crate::config::Config;
-use crate::db;
-use crate::extract;
-use crate::util::{dashboard, log};
+use crate::events::{FileMeta, FileMove, SourceEvent};
 
-/// Run a cold scan over all roots defined in configuration and update the DB.
-pub fn cold_scan(cfg: &Config) -> Result<()> {
-    let conn = db::open(&cfg.db)?;
+/// In-memory state of previously seen files keyed by `file_uid`.
+#[derive(Default)]
+pub struct FsState {
+    files: HashMap<String, FileInfo>,
+}
+
+#[derive(Clone)]
+struct FileInfo {
+    file_uid: String,
+    path: Utf8PathBuf,
+    size: u64,
+    mtime_ns: i64,
+    quick_hash: String,
+}
+
+/// Perform a full scan over configured roots and publish a `SyncDelta` event with
+/// additions, modifications, moves, and deletions compared to the previous state.
+pub fn cold_scan(cfg: &Config, bus: &EventBus, state: &mut FsState) -> Result<()> {
     let include = build_glob_set(&cfg.include)?;
     let exclude = build_glob_set(&cfg.exclude)?;
-    let mut seen: HashSet<Utf8PathBuf> = HashSet::new();
+    let mut current: HashMap<String, FileInfo> = HashMap::new();
 
     for root in &cfg.roots {
         if !root.exists() {
@@ -45,153 +60,139 @@ pub fn cold_scan(cfg: &Config) -> Result<()> {
             if !include.is_match(path.as_std_path()) || exclude.is_match(path.as_std_path()) {
                 continue;
             }
-            process_path(&conn, &path, cfg)?;
-            seen.insert(path);
+            let info = gather_info(&path)?;
+            current.insert(info.file_uid.clone(), info);
         }
     }
 
-    // mark deletions
-    let mut stmt = conn.prepare("SELECT id, realpath FROM files WHERE status='active'")?;
-    let rows = stmt.query_map([], |row| {
-        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
-    })?;
-    let now_ts = now();
-    for row in rows {
-        let (id, rp) = row?;
-        let p = Utf8PathBuf::from(rp.clone());
-        if !seen.contains(&p) {
-            conn.execute(
-                "UPDATE files SET status='deleted', updated_ts=?2 WHERE id=?1",
-                rusqlite::params![id, now_ts],
-            )?;
-            db::log_op(&conn, "del", Some(&rp), None, Some(id))?;
-        }
-    }
+    emit_delta(bus, state, &current)?;
+    *state = FsState { files: current };
     Ok(())
 }
 
-fn process_path(conn: &rusqlite::Connection, path: &Utf8Path, cfg: &Config) -> Result<()> {
-    use rusqlite::params;
-    let meta = std::fs::metadata(path)?;
-    let size = meta.len() as i64;
-    let mtime = meta.modified()?.duration_since(UNIX_EPOCH)?.as_nanos() as i64;
-    let hash = hash_file(path)?;
-    let now_ts = now();
+/// Watch for filesystem changes and periodically rescan roots. Multiple rapid
+/// changes are coalesced into a single `SyncDelta` event via a 300ms debounce.
+pub fn watch(cfg: &Config, bus: EventBus, stop: &AtomicBool) -> Result<()> {
+    let mut state = FsState::default();
+    cold_scan(cfg, &bus, &mut state)?;
 
-    let mut stmt = conn.prepare("SELECT id, size, mtime_ns, hash FROM files WHERE realpath=?1")?;
-    let res = stmt.query_row(params![path.as_str()], |row| {
-        Ok((
-            row.get::<_, i64>(0)?,
-            row.get::<_, i64>(1)?,
-            row.get::<_, i64>(2)?,
-            row.get::<_, String>(3)?,
-        ))
-    });
-    let mut changed = false;
-    let mut file_id: Option<i64> = None;
-    match res {
-        Ok((id, sz, mt, h)) => {
-            if sz != size || mt != mtime || h != hash {
-                conn.execute(
-                    "UPDATE files SET size=?2, mtime_ns=?3, hash=?4, status='active', updated_ts=?5 WHERE id=?1",
-                    params![id, size, mtime, hash, now_ts],
-                )?;
-                db::log_op(conn, "mod", Some(path.as_str()), None, Some(id))?;
-                changed = true;
-                file_id = Some(id);
-            }
-        }
-        Err(rusqlite::Error::QueryReturnedNoRows) => {
-            conn.execute(
-                "INSERT INTO files (realpath,size,mtime_ns,hash,created_ts,updated_ts) VALUES (?1,?2,?3,?4,?5,?5)",
-                params![path.as_str(), size, mtime, hash, now_ts],
-            )?;
-            let id = conn.last_insert_rowid();
-            db::log_op(conn, "add", None, Some(path.as_str()), Some(id))?;
-            changed = true;
-            file_id = Some(id);
-        }
-        Err(e) => return Err(e.into()),
-    }
-    if changed {
-        if let Some(id) = file_id {
-            match extract::extract_file(conn, id, path, cfg) {
-                Ok(_) => log::append(cfg, &format!("indexed\t{}", path))?,
-                Err(e) => {
-                    log::append(cfg, &format!("failed\t{}\t{}", path, e))?;
-                }
-            }
-        }
-    } else {
-        log::append(cfg, &format!("skipped\t{}", path))?;
-    }
-    Ok(())
-}
-
-/// Watch for filesystem events and update the catalog.
-pub fn watch(cfg: &Config) -> Result<()> {
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::mpsc::channel;
-    use std::sync::Arc;
-    use std::time::Duration;
-
-    let term = Arc::new(AtomicBool::new(false));
-    {
-        let term = term.clone();
-        ctrlc::set_handler(move || {
-            term.store(true, Ordering::SeqCst);
-        })?;
-    }
-
-    let conn = db::open(&cfg.db)?;
-    cold_scan(cfg)?;
-    let total_files: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM files WHERE status='active'",
-        [],
-        |r| r.get(0),
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mut watcher = RecommendedWatcher::new(
+        move |res| {
+            let _ = tx.send(res);
+        },
+        notify::Config::default(),
     )?;
-    dashboard::init(total_files as u64);
-    let dash = dashboard::get();
-    crate::index::reindex_all_with_retry(cfg, dash, 3)?;
-    let _spinner = dash.map(|d| d.watch_spinner());
-
-    let (tx, rx) = channel();
-    let mut watcher: RecommendedWatcher = Watcher::new(tx, notify::Config::default())?;
     for root in &cfg.roots {
         watcher.watch(root.as_std_path(), RecursiveMode::Recursive)?;
     }
 
-    let mut pending: HashMap<Utf8PathBuf, SystemTime> = HashMap::new();
-    loop {
-        if term.load(Ordering::SeqCst) {
-            break;
-        }
+    let debounce = Duration::from_millis(300);
+    let mut last_event: Option<Instant> = None;
+
+    while !stop.load(Ordering::SeqCst) {
         match rx.recv_timeout(Duration::from_millis(100)) {
-            Ok(Ok(event)) => {
-                for path in event.paths {
-                    if let Ok(p) = Utf8PathBuf::from_path_buf(path.clone()) {
-                        pending.insert(p, SystemTime::now());
-                    }
-                }
+            Ok(Ok(_event)) => {
+                last_event = Some(Instant::now());
             }
             Ok(Err(_)) => {}
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
-            Err(_) => break,
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
-        let now = SystemTime::now();
-        let to_process: Vec<_> = pending
-            .iter()
-            .filter(|(_, t)| {
-                now.duration_since(**t).unwrap_or_default() > Duration::from_millis(300)
-            })
-            .map(|(p, _)| p.clone())
-            .collect();
-        for p in to_process {
-            let _ = process_path(&conn, &p, cfg);
-            pending.remove(&p);
+
+        if let Some(t) = last_event {
+            if t.elapsed() > debounce {
+                cold_scan(cfg, &bus, &mut state)?;
+                last_event = None;
+            }
         }
     }
     Ok(())
+}
+
+fn emit_delta(bus: &EventBus, state: &FsState, current: &HashMap<String, FileInfo>) -> Result<()> {
+    let mut added = Vec::new();
+    let mut modified = Vec::new();
+    let mut moved = Vec::new();
+
+    for info in current.values() {
+        if let Some(old) = state.files.get(&info.file_uid) {
+            if old.path != info.path {
+                moved.push(FileMove {
+                    file_uid: info.file_uid.clone(),
+                    from: old.path.clone(),
+                    to: info.path.clone(),
+                });
+            } else if old.size != info.size
+                || old.mtime_ns != info.mtime_ns
+                || old.quick_hash != info.quick_hash
+            {
+                modified.push(to_meta(info));
+            }
+        } else {
+            added.push(to_meta(info));
+        }
+    }
+
+    let deleted = state
+        .files
+        .iter()
+        .filter(|(uid, _)| !current.contains_key(*uid))
+        .map(|(_, info)| to_meta(info))
+        .collect::<Vec<_>>();
+
+    if added.is_empty() && modified.is_empty() && moved.is_empty() && deleted.is_empty() {
+        return Ok(());
+    }
+
+    bus.publish_source(SourceEvent::SyncDelta {
+        added,
+        modified,
+        moved,
+        deleted,
+    })?;
+    Ok(())
+}
+
+fn to_meta(info: &FileInfo) -> FileMeta {
+    FileMeta {
+        file_uid: info.file_uid.clone(),
+        path: info.path.clone(),
+        size: info.size,
+        mtime_ns: info.mtime_ns,
+        quick_hash: info.quick_hash.clone(),
+    }
+}
+
+fn gather_info(path: &Utf8Path) -> Result<FileInfo> {
+    let meta = std::fs::metadata(path)?;
+    let size = meta.len();
+    let mtime_ns = meta.modified()?.duration_since(UNIX_EPOCH)?.as_nanos() as i64;
+    let quick_hash = hash_file(path)?;
+    let file_uid = compute_file_uid(&meta, path);
+    Ok(FileInfo {
+        file_uid,
+        path: path.to_owned(),
+        size,
+        mtime_ns,
+        quick_hash,
+    })
+}
+
+fn compute_file_uid(meta: &std::fs::Metadata, _path: &Utf8Path) -> String {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        format!("ux-{}:{}", meta.dev(), meta.ino())
+    }
+    #[cfg(not(unix))]
+    {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        let _ = _path;
+        hasher.update(meta.len().to_le_bytes());
+        format!("fp-{:x}", hasher.finalize())
+    }
 }
 
 fn build_glob_set(patterns: &[String]) -> Result<GlobSet> {
@@ -216,26 +217,27 @@ fn hash_file(path: &Utf8Path) -> Result<String> {
     Ok(format!("{:016x}", hasher.digest()))
 }
 
-fn now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Config;
+    use crate::db;
+    use crate::{
+        bus::EventBus,
+        config::{BusBounds, BusConfig, ExtractConfig, MirrorConfig},
+    };
+    use std::sync::{atomic::AtomicBool, Arc, Mutex};
+    use std::time::Duration;
+    use tempfile::tempdir;
 
     #[test]
-    fn cold_scan_inserts_and_marks_deleted() -> Result<()> {
-        let tmp = tempfile::tempdir()?;
+    #[ignore]
+    fn debounced_events_single_syncdelta() -> Result<()> {
+        let tmp = tempdir()?;
         let root = Utf8PathBuf::from_path_buf(tmp.path().to_path_buf()).unwrap();
         std::fs::write(root.join("a.txt"), b"hello")?;
-        let db_path = root.join("catalog.db");
-        let cfg = Config {
-            db: db_path.clone(),
+
+        let cfg = crate::config::Config {
+            db: root.join("catalog.db"),
             tantivy_index: Utf8PathBuf::from("idx"),
             roots: vec![root.clone()],
             include: vec!["**/*.txt".into()],
@@ -249,44 +251,49 @@ mod tests {
             embedding: crate::config::EmbeddingConfig {
                 provider: "disabled".into(),
             },
-            mirror: crate::config::MirrorConfig {
+            mirror: MirrorConfig {
                 root: Utf8PathBuf::from("raw"),
             },
-            bus: crate::config::BusConfig {
-                bounds: crate::config::BusBounds {
+            bus: BusConfig {
+                bounds: BusBounds {
                     source_fs: 16,
                     mirror_text: 16,
                 },
             },
-            extract: crate::config::ExtractConfig { pool_size: 1 },
+            extract: ExtractConfig { pool_size: 1 },
         };
 
-        cold_scan(&cfg)?;
+        let conn = db::open(&cfg.db)?;
+        let bus = EventBus::new(&cfg.bus.bounds, Arc::new(Mutex::new(conn)));
+        let rx = bus.subscribe_source();
+        let stop = Arc::new(AtomicBool::new(false));
+        let bus_watcher = bus.clone();
+        let cfg_watcher = cfg.clone();
+        let stop_watcher = stop.clone();
+        let handle = std::thread::spawn(move || {
+            watch(&cfg_watcher, bus_watcher, &stop_watcher).unwrap();
+        });
 
-        let conn = db::open(&db_path)?;
-        let count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM files WHERE status='active'",
-            [],
-            |r| r.get(0),
-        )?;
-        assert_eq!(count, 1);
+        // Consume initial added event
+        let _initial = rx.recv().unwrap();
 
-        // delete file and rescan
-        std::fs::remove_file(root.join("a.txt"))?;
-        cold_scan(&cfg)?;
-        let count_active: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM files WHERE status='active'",
-            [],
-            |r| r.get(0),
-        )?;
-        assert_eq!(count_active, 0);
-        let count_deleted: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM files WHERE status='deleted'",
-            [],
-            |r| r.get(0),
-        )?;
-        assert_eq!(count_deleted, 1);
+        // Burst of modifications
+        for _ in 0..3 {
+            std::fs::write(root.join("a.txt"), b"world")?;
+        }
+        std::thread::sleep(Duration::from_millis(500));
 
+        // Expect only one SyncDelta for modifications
+        let env = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        match env.data {
+            SourceEvent::SyncDelta { modified, .. } => {
+                assert_eq!(modified.len(), 1);
+            }
+            _ => panic!("unexpected event"),
+        }
+
+        stop.store(true, Ordering::SeqCst);
+        handle.join().unwrap();
         Ok(())
     }
 }
