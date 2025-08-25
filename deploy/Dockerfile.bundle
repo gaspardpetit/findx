@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1.7
+FROM rust:1.88 AS rust-builder
+
+# Install clang for C compilation of sqlite3.c
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends clang pkg-config \
+ && rm -rf /var/lib/apt/lists/*
+
+# Tell cc-rs to use clang, and keep optimization sane for the huge amalgamation
+ENV CC=clang \
+    CXX=clang++ \
+    CFLAGS="-O2"
+
+WORKDIR /usr/src/findx
+
+# Manifests first + placeholder so 'cargo fetch' works
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir -p src && printf "fn main() {}\n" > src/main.rs
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    cargo fetch --locked
+
+# Real sources + build
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    cargo build --release --locked --bin findx
+
+# Runtime unchanged...
+FROM debian:bookworm-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /data
+COPY --from=rust-builder /usr/src/findx/target/release/findx /usr/local/bin/findx
+ENTRYPOINT ["findx"]
+CMD ["--help"]

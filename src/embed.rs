@@ -1,7 +1,12 @@
 use anyhow::{anyhow, bail, Context, Result};
 use camino::Utf8PathBuf;
 use fastembed::{
-    EmbeddingModel, InitOptions, InitOptionsUserDefined, TextEmbedding, TokenizerFiles,
+    EmbeddingModel, 
+    InitOptions,
+    TextInitOptions,
+    InitOptionsUserDefined,
+    TextEmbedding,
+    TokenizerFiles,
     UserDefinedEmbeddingModel,
 };
 use once_cell::sync::OnceCell;
@@ -29,7 +34,7 @@ impl LocalEmbedder {
             let cache_dir = Utf8PathBuf::from(".findx/fastembed_cache");
             fs::create_dir_all(&cache_dir).context("failed to create fastembed cache directory")?;
             TextEmbedding::try_new(
-                InitOptions::new(parsed)
+                TextInitOptions::default()
                     .with_cache_dir(cache_dir.into())
                     .with_show_download_progress(true),
             )
