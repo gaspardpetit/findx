@@ -1,5 +1,6 @@
 [package]
 name = "findx"
+version = "0.2.3-dev"
 edition = "2021"
 
 [dependencies]
