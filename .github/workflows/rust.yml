@@ -19,13 +19,7 @@ jobs:
     - name: Compute version metadata
       id: meta
       shell: bash
-      run: |
-        if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-          VERSION="${GITHUB_REF_NAME}"
-        else
-          VERSION="$(git describe --tags --always --dirty)"
-        fi
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+      run: .github/scripts/version.sh
     - name: Build
       env:
         FINDX_VERSION: ${{ steps.meta.outputs.version }}
