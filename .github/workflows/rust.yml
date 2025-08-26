@@ -16,7 +16,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Compute version metadata
+      id: meta
+      shell: bash
+      run: .github/scripts/version.sh
     - name: Build
+      env:
+        FINDX_VERSION: ${{ steps.meta.outputs.version }}
       run: cargo build --verbose
     - name: Run tests
+      env:
+        FINDX_VERSION: ${{ steps.meta.outputs.version }}
       run: cargo test --verbose

@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.7
 FROM rust:1.88 AS rust-builder
 
+ARG FINDX_VERSION=0.0.0
+
 # Install clang for C compilation of sqlite3.c
 RUN apt-get update \
  && apt-get install -y --no-install-recommends clang pkg-config \
@@ -10,6 +12,7 @@ RUN apt-get update \
 ENV CC=clang \
     CXX=clang++ \
     CFLAGS="-O2"
+ENV FINDX_VERSION=${FINDX_VERSION}
 
 WORKDIR /usr/src/findx
 
