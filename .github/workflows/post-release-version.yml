@@ -1,0 +1,26 @@
+name: post-release-version
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set dev version in Cargo.toml
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${TAG#v}-dev"
+          UPDATE_CARGO_TOML=1 OVERRIDE_VERSION="$VERSION" .github/scripts/version.sh
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -am "chore: start $VERSION"
+          git push

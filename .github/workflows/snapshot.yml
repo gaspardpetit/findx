@@ -27,6 +27,8 @@ jobs:
       - name: Compute version metadata
         id: meta
         shell: bash
+        env:
+          UPDATE_CARGO_TOML: "1"
         run: .github/scripts/version.sh
 
       - uses: actions-rs/toolchain@v1

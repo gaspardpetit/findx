@@ -244,7 +244,7 @@ cargo build
 
 Prebuilt binaries for Linux, macOS, and Windows are available on the [GitHub Releases](https://github.com/gaspardpetit/findx/releases) page.
 These binaries embed the release tag; verify with `findx --version`.
-Development builds derive their version from the current git tag and `Cargo.toml` intentionally omits a package version.
+`Cargo.toml` tracks the last release as `<tag>-dev`. Snapshot builds append the build date and commit hash (e.g. `0.2.3-dev.20240101-abcdef12`) while releases use the plain tag version.
 
 Snapshot artifacts for the `main` branch are published by the `snapshot` workflow.
 
